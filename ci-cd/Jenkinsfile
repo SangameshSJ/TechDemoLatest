@@ -74,11 +74,16 @@ pipeline {
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
                 
-                // Copy docker images from bastion to app servers
+                // Copy the SSH key to the bastion for use with app servers
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
+                
+                // Set permissions and copy files from bastion to app servers
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        scp -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
-                        scp -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
+                        chmod 600 /tmp/app_key
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
+                        rm /tmp/app_key  # Clean up
                     "
                 '''
             }
@@ -88,7 +93,7 @@ pipeline {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             sudo docker load -i /tmp/app1.tar
                             sudo docker stop app1 || true
                             sudo docker rm app1 || true
@@ -104,7 +109,7 @@ pipeline {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             sudo docker load -i /tmp/app2.tar
                             sudo docker stop app2 || true
                             sudo docker rm app2 || true
@@ -121,7 +126,7 @@ pipeline {
                 sh '''
                     # Verify App 1
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             echo \"App 1 Container Status:\"
                             sudo docker ps | grep app1
                         '
@@ -129,10 +134,20 @@ pipeline {
                     
                     # Verify App 2
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             echo \"App 2 Container Status:\"
                             sudo docker ps | grep app2
                         '
+                    "
+                '''
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        rm -f /tmp/app_key || true
                     "
                 '''
             }
