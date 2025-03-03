@@ -8,9 +8,9 @@ pipeline {
     
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        BASTION_HOST = "98.81.250.82"     // Pulumi Output -> bastion_public_ip
-        APP1_HOST = "10.0.2.124"         // Pulumi Output -> app1_private_ip
-        APP2_HOST = "10.0.3.99"          // Pulumi Output -> app2_private_ip
+        BASTION_HOST = "3.87.51.7"     // Pulumi Output -> bastion_public_ip
+        APP1_HOST = "10.0.2.240"         // Pulumi Output -> app1_private_ip
+        APP2_HOST = "10.0.3.189"          // Pulumi Output -> app2_private_ip
         SSH_KEY = credentials('bastion-key')
     }
     
