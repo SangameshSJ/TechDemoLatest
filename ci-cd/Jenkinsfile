@@ -1,0 +1,85 @@
+pipeline {
+    agent any
+    
+    environment {
+        AWS_CREDENTIALS = credentials('aws-credentials')
+        BASTION_HOST = "${BASTION_HOST}"
+        APP1_HOST = "${APP1_HOST}"
+        APP2_HOST = "${APP2_HOST}"
+        SSH_KEY = credentials('bastion-key')
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build App 1') {
+            steps {
+                dir('app1') {
+                    sh 'docker build -t app1:latest .'
+                }
+            }
+        }
+        
+        stage('Build App 2') {
+            steps {
+                dir('app2') {
+                    sh 'docker build -t app2:latest .'
+                }
+            }
+        }
+        
+        stage('Save Docker Images') {
+            steps {
+                sh 'docker save -o app1.tar app1:latest'
+                sh 'docker save -o app2.tar app2:latest'
+            }
+        }
+        
+        stage('Transfer to Bastion') {
+            steps {
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
+            }
+        }
+        
+        stage('Deploy App 1') {
+            steps {
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        ssh -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                            sudo docker load -i /tmp/app1.tar
+                            sudo docker stop app1 || true
+                            sudo docker rm app1 || true
+                            sudo docker run -d --name app1 -p 80:80 app1:latest
+                        '
+                    "
+                '''
+            }
+        }
+        
+        stage('Deploy App 2') {
+            steps {
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        ssh -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                            sudo docker load -i /tmp/app2.tar
+                            sudo docker stop app2 || true
+                            sudo docker rm app2 || true
+                            sudo docker run -d --name app2 -p 80:80 app2:latest
+                        '
+                    "
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
