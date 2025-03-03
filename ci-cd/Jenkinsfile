@@ -3,9 +3,9 @@ pipeline {
     
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        BASTION_HOST = "${BASTION_HOST}"
-        APP1_HOST = "${APP1_HOST}"
-        APP2_HOST = "${APP2_HOST}"
+        BASTION_HOST = "98.81.250.82"     // Pulumi Output -> bastion_public_ip
+        APP1_HOST = "10.0.2.124"         // Pulumi Output -> app1_private_ip
+        APP2_HOST = "10.0.3.99"          // Pulumi Output -> app2_private_ip
         SSH_KEY = credentials('bastion-key')
     }
     
@@ -18,7 +18,7 @@ pipeline {
         
         stage('Build App 1') {
             steps {
-                dir('app1') {
+                dir('applications/app1') {
                     sh 'docker build -t app1:latest .'
                 }
             }
@@ -26,7 +26,7 @@ pipeline {
         
         stage('Build App 2') {
             steps {
-                dir('app2') {
+                dir('applications/app2') {
                     sh 'docker build -t app2:latest .'
                 }
             }
