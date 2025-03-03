@@ -9,8 +9,8 @@ pipeline {
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         BASTION_HOST = "3.87.51.7"     // Pulumi Output -> bastion_public_ip
-        APP1_HOST = "10.0.2.240"         // Pulumi Output -> app1_private_ip
-        APP2_HOST = "10.0.3.189"          // Pulumi Output -> app2_private_ip
+        APP1_HOST = "10.0.2.240"       // Pulumi Output -> app1_private_ip
+        APP2_HOST = "10.0.3.189"       // Pulumi Output -> app2_private_ip
         SSH_KEY = credentials('bastion-key')
     }
     
@@ -65,25 +65,34 @@ pipeline {
             }
         }
         
-        stage('Transfer to Bastion') {
+        stage('Setup SSH on Bastion') {
             steps {
                 // Ensure key has correct permissions
                 sh 'chmod 600 $SSH_KEY'
                 
+                // Copy the SSH key to the bastion for use with app servers
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
+                
+                // Set proper permissions for the key on the bastion
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        chmod 600 /tmp/app_key
+                    "
+                '''
+            }
+        }
+        
+        stage('Transfer to Bastion') {
+            steps {
                 // Copy docker images to bastion
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
                 
-                // Copy the SSH key to the bastion for use with app servers
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
-                
-                // Set permissions and copy files from bastion to app servers
+                // Copy docker images from bastion to app servers
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        chmod 600 /tmp/app_key
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
-                        rm /tmp/app_key  # Clean up
                     "
                 '''
             }
@@ -143,7 +152,7 @@ pipeline {
             }
         }
         
-        stage('Cleanup') {
+        stage('Cleanup SSH Key') {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
@@ -160,6 +169,13 @@ pipeline {
         }
         failure {
             echo "Deployment failed. Please check the logs for more details."
+            
+            // Ensure we clean up the SSH key even on failure
+            sh '''
+                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    rm -f /tmp/app_key || true
+                " || true
+            '''
         }
         always {
             // Clean up local docker images and tars
