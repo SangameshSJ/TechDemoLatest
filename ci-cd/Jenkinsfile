@@ -8,16 +8,31 @@ pipeline {
     
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        BASTION_HOST = "3.87.51.7"     // Pulumi Output -> bastion_public_ip
-        APP1_HOST = "10.0.2.240"       // Pulumi Output -> app1_private_ip
-        APP2_HOST = "10.0.3.189"       // Pulumi Output -> app2_private_ip
         SSH_KEY = credentials('bastion-key')
     }
     
     stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master',
+                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
+                    credentialsId: 'github-https-token'
+            }
+        }
+        
+        stage('Load Outputs') {
+            steps {
+                script {
+                    def outputs = readJSON file: 'outputs.json'
+                    env.BASTION_HOST = outputs.bastion_public_ip
+                    env.APP1_HOST = outputs.app1_private_ip
+                    env.APP2_HOST = outputs.app2_private_ip
+                }
+            }
+        }
+        
         stage('Install Docker') {
             steps {
-                // This is a backup to ensure Docker is available if not provided by the image
                 sh '''
                 if ! command -v docker &> /dev/null; then
                     echo "Docker not found, installing..."
@@ -25,20 +40,10 @@ pipeline {
                     sh get-docker.sh
                     sudo usermod -aG docker jenkins
                     sudo systemctl restart docker || true
-                    # If running in container, Docker may already be available through host
                 fi
                 
-                # Test Docker
                 docker --version || echo "Docker installation failed but continuing..."
                 '''
-            }
-        }
-        
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
-                    credentialsId: 'github-https-token'
             }
         }
         
@@ -67,13 +72,8 @@ pipeline {
         
         stage('Setup SSH on Bastion') {
             steps {
-                // Ensure key has correct permissions
                 sh 'chmod 600 $SSH_KEY'
-                
-                // Copy the SSH key to the bastion for use with app servers
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
-                
-                // Set proper permissions for the key on the bastion
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         chmod 600 /tmp/app_key
@@ -84,11 +84,8 @@ pipeline {
         
         stage('Transfer to Bastion') {
             steps {
-                // Copy docker images to bastion
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
-                
-                // Copy docker images from bastion to app servers
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
@@ -133,7 +130,6 @@ pipeline {
         stage('Verify Deployments') {
             steps {
                 sh '''
-                    # Verify App 1
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             echo \"App 1 Container Status:\"
@@ -141,7 +137,6 @@ pipeline {
                         '
                     "
                     
-                    # Verify App 2
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             echo \"App 2 Container Status:\"
@@ -169,8 +164,6 @@ pipeline {
         }
         failure {
             echo "Deployment failed. Please check the logs for more details."
-            
-            // Ensure we clean up the SSH key even on failure
             sh '''
                 ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                     rm -f /tmp/app_key || true
@@ -178,7 +171,6 @@ pipeline {
             '''
         }
         always {
-            // Clean up local docker images and tars
             sh '''
                 docker rmi app1:latest || true
                 docker rmi app2:latest || true
