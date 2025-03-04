@@ -1,16 +1,11 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:dind'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
-    
+    agent any // Use any agent (no need for Docker-in-Docker)
+
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         SSH_KEY = credentials('bastion-key')
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -19,7 +14,7 @@ pipeline {
                     credentialsId: 'github-https-token'
             }
         }
-        
+
         stage('Load Outputs') {
             steps {
                 script {
@@ -30,23 +25,7 @@ pipeline {
                 }
             }
         }
-        
-        stage('Install Docker') {
-            steps {
-                sh '''
-                if ! command -v docker &> /dev/null; then
-                    echo "Docker not found, installing..."
-                    curl -fsSL https://get.docker.com -o get-docker.sh
-                    sh get-docker.sh
-                    sudo usermod -aG docker jenkins
-                    sudo systemctl restart docker || true
-                fi
-                
-                docker --version || echo "Docker installation failed but continuing..."
-                '''
-            }
-        }
-        
+
         stage('Build App 1') {
             steps {
                 dir('applications/app1') {
@@ -54,7 +33,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build App 2') {
             steps {
                 dir('applications/app2') {
@@ -62,14 +41,14 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Save Docker Images') {
             steps {
                 sh 'docker save -o app1.tar app1:latest'
                 sh 'docker save -o app2.tar app2:latest'
             }
         }
-        
+
         stage('Setup SSH on Bastion') {
             steps {
                 sh 'chmod 600 $SSH_KEY'
@@ -81,7 +60,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Transfer to Bastion') {
             steps {
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
@@ -94,7 +73,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Deploy App 1') {
             steps {
                 sh '''
@@ -110,7 +89,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Deploy App 2') {
             steps {
                 sh '''
@@ -126,7 +105,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Verify Deployments') {
             steps {
                 sh '''
@@ -136,7 +115,7 @@ pipeline {
                             sudo docker ps | grep app1
                         '
                     "
-                    
+
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             echo \"App 2 Container Status:\"
@@ -146,7 +125,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Cleanup SSH Key') {
             steps {
                 sh '''
@@ -157,7 +136,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         success {
             echo "Deployment completed successfully!"
