@@ -1,10 +1,8 @@
-# infrastructure/network.py
-
 import pulumi
 import pulumi_aws as aws
 from infrastructure.config import region, cidr_block
 
-def create_network_infrastructure():
+def create_network_infrastructure(security_groups):
     # Create a VPC
     vpc = aws.ec2.Vpc("bastion-vpc",
         cidr_block=cidr_block,
@@ -50,7 +48,11 @@ def create_network_infrastructure():
 
     # Create a NAT Gateway for the private subnets
     eip = aws.ec2.Eip("nat-eip",
-        vpc=True)
+        vpc=True,
+        # Remove the domain attribute
+        tags={
+            "Name": "NAT Gateway EIP"
+        })
 
     nat_gateway = aws.ec2.NatGateway("bastion-nat",
         allocation_id=eip.id,
@@ -93,9 +95,48 @@ def create_network_infrastructure():
         subnet_id=app2_subnet.id,
         route_table_id=private_route_table.id)
 
+    # Create Target Group for App Instances
+    app_target_group = aws.lb.TargetGroup("app-target-group",
+        vpc_id=vpc.id,
+        port=80,
+        protocol="HTTP",
+        target_type="instance",
+        health_check={
+            "enabled": True,
+            "path": "/",
+            "healthy_threshold": 3,
+            "unhealthy_threshold": 3,
+            "timeout": 5,
+            "interval": 30,
+            "matcher": "200-399"
+        })
+
+    # Create Application Load Balancer (using security group if provided)
+    lb_security_group_id = security_groups.get("app_lb_sg").id if security_groups else None
+    
+    app_lb = aws.lb.LoadBalancer("app-load-balancer",
+        internal=False,  # Public-facing
+        load_balancer_type="application",
+        security_groups=[lb_security_group_id] if lb_security_group_id else [],
+        subnets=[public_subnet.id, app2_subnet.id],
+        tags={
+            "Name": "application-load-balancer"
+        })
+
+    # Create ALB Listener
+    app_listener = aws.lb.Listener("app-listener",
+        load_balancer_arn=app_lb.arn,
+        port=80,
+        default_actions=[{
+            "type": "forward",
+            "target_group_arn": app_target_group.arn
+        }])
+
     return {
         "vpc": vpc,
         "public_subnet": public_subnet,
         "app1_subnet": app1_subnet,
-        "app2_subnet": app2_subnet
+        "app2_subnet": app2_subnet,
+        "app_target_group": app_target_group,
+        "app_lb": app_lb
     }
