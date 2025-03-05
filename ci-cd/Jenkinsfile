@@ -1,32 +1,34 @@
 pipeline {
     agent any
-
+    
     environment {
-        AWS_CREDENTIALS = credentials('aws-credentials')
-        SSH_KEY = credentials('bastion-key')
+        // Define environment variables
+        BASTION_HOST = credentials('bastion-host-ip')
+        SSH_KEY = credentials('bastion-ssh-key')
     }
-
+    
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
-                git branch: 'feature-branch',
-                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
-                    credentialsId: 'github-https-token'
+                checkout scm
             }
         }
-
+        
         stage('Load Outputs') {
             steps {
                 script {
-                    // Use readJSON to load the outputs.json file
-                    def outputs = readJSON file: 'outputs.json'
-                    env.BASTION_HOST = outputs.bastion_public_ip
-                    env.APP1_HOST = outputs.app1_private_ip
-                    env.APP2_HOST = outputs.app2_private_ip
+                    // Use fileExists and readFile instead of readJSON
+                    if (fileExists('outputs.json')) {
+                        def outputsJson = readFile('outputs.json')
+                        env.BASTION_HOST = sh(
+                            script: "echo '${outputsJson}' | jq -r '.bastion_public_ip'",
+                            returnStdout: true
+                        ).trim()
+                    }
                 }
             }
         }
-
+        
         stage('Build App 1') {
             steps {
                 dir('applications/app1') {
@@ -34,7 +36,7 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Build App 2') {
             steps {
                 dir('applications/app2') {
@@ -42,121 +44,82 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Save Docker Images') {
             steps {
                 sh 'docker save -o app1.tar app1:latest'
                 sh 'docker save -o app2.tar app2:latest'
             }
         }
-
+        
         stage('Setup SSH on Bastion') {
             steps {
+                // Ensure SSH key has correct permissions
                 sh 'chmod 600 $SSH_KEY'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        chmod 600 /tmp/app_key
-                    "
-                '''
             }
         }
-
+        
         stage('Transfer to Bastion') {
             steps {
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
-                    "
-                '''
+                // Use the environment variable for bastion host
+                sh """
+                    scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar app2.tar ec2-user@${BASTION_HOST}:/tmp/
+                """
             }
         }
-
+        
         stage('Deploy App 1') {
             steps {
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
-                            sudo docker load -i /tmp/app1.tar
-                            sudo docker stop app1 || true
-                            sudo docker rm app1 || true
-                            sudo docker run -d --name app1 -p 80:80 app1:latest
-                            rm /tmp/app1.tar
-                        '
-                    "
-                '''
+                sh """
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} '
+                        docker load -i /tmp/app1.tar
+                        docker run -d -p 8081:80 app1:latest
+                    '
+                """
             }
         }
-
+        
         stage('Deploy App 2') {
             steps {
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
-                            sudo docker load -i /tmp/app2.tar
-                            sudo docker stop app2 || true
-                            sudo docker rm app2 || true
-                            sudo docker run -d --name app2 -p 80:80 app2:latest
-                            rm /tmp/app2.tar
-                        '
-                    "
-                '''
+                sh """
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} '
+                        docker load -i /tmp/app2.tar
+                        docker run -d -p 8082:80 app2:latest
+                    '
+                """
             }
         }
-
+        
         stage('Verify Deployments') {
             steps {
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
-                            echo \"App 1 Container Status:\"
-                            sudo docker ps | grep app1
-                        '
-                    "
-
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
-                            echo \"App 2 Container Status:\"
-                            sudo docker ps | grep app2
-                        '
-                    "
-                '''
+                sh """
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} '
+                        curl http://localhost:8081
+                        curl http://localhost:8082
+                    '
+                """
             }
         }
-
+        
         stage('Cleanup SSH Key') {
             steps {
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        rm -f /tmp/app_key || true
-                    "
-                '''
+                sh """
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} '
+                        rm -f /tmp/app1.tar /tmp/app2.tar
+                    '
+                """
             }
         }
     }
-
+    
     post {
-        success {
-            echo "Deployment completed successfully!"
-        }
-        failure {
-            echo "Deployment failed. Please check the logs for more details."
-            sh '''
-                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                    rm -f /tmp/app_key || true
-                " || true
-            '''
-        }
         always {
-            sh '''
-                docker rmi app1:latest || true
-                docker rmi app2:latest || true
-                rm -f app1.tar || true
-                rm -f app2.tar || true
-            '''
+            // Clean up local Docker images
+            sh 'docker rmi app1:latest || true'
+            sh 'docker rmi app2:latest || true'
+            sh 'rm -f app1.tar app2.tar'
+            
+            // Clean workspace
             cleanWs()
         }
     }
