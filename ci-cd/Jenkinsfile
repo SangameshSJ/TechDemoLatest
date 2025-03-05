@@ -68,7 +68,7 @@ pipeline {
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@18.212.37.31:/tmp/'
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@10.0.2.234:/tmp/
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
                     "
                 '''
@@ -79,7 +79,7 @@ pipeline {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.234 '
                             sudo docker load -i /tmp/app1.tar
                             sudo docker stop app1 || true
                             sudo docker rm app1 || true
@@ -95,7 +95,7 @@ pipeline {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.186 '
                             sudo docker load -i /tmp/app2.tar
                             sudo docker stop app2 || true
                             sudo docker rm app2 || true
@@ -111,14 +111,14 @@ pipeline {
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.234 '
                             echo \"App 1 Container Status:\"
                             sudo docker ps | grep app1
                         '
                     "
 
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.186 '
                             echo \"App 2 Container Status:\"
                             sudo docker ps | grep app2
                         '
