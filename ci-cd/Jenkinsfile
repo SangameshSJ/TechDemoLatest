@@ -69,7 +69,7 @@ pipeline {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.212.37.31 "
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@10.0.2.234:/tmp/
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@10.0.3.186:/tmp/
                     "
                 '''
             }
