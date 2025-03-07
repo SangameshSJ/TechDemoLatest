@@ -1,1 +1,1 @@
-{"vpc_id": "vpc-07475b70980daff06", "bastion_public_ip": "18.220.201.109", "jenkins_public_ip": "18.227.81.35", "app1_private_ip": "10.0.2.39", "app2_private_ip": "10.0.3.250", "ssh_command": "ssh -i bastion-key.pem ec2-user@18.220.201.109"}
+{"vpc_id": "vpc-09f7668e2258819a8", "bastion_public_ip": "3.144.233.184", "jenkins_public_ip": "18.119.131.40", "app1_private_ip": "10.0.2.16", "app2_private_ip": "10.0.3.186", "ssh_command": "ssh -i bastion-key.pem ec2-user@3.144.233.184"}
