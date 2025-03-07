@@ -131,9 +131,10 @@ pipeline {
             steps {
                 sh '''
                     echo "Collecting deployment logs..."
+                    
                     # Get logs from App1
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 <<'EOT'
                             echo \"Collecting App1 logs...\"
                             sudo docker logs app1 > /tmp/app1-deployment.log 2>&1
                             
@@ -146,21 +147,24 @@ pipeline {
                                 sudo aws logs create-log-group --log-group-name app-instance-logs || true
                                 sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs || true
                                 
-                                # Format log data as JSON
-                                sudo aws logs put-log-events \
-                                --log-group-name app-instance-logs \
-                                --log-stream-name app1-deployment-logs \
-                                --log-events \"[{\\\"timestamp\\\": $(date +%s000), \\\"message\\\": \\\"$(sed -e \"s/\\\"/\\\\\\\"/g\" /tmp/app1-deployment.log | tr \"\\n\" \" \")\\\"}]\" \
-                                || echo \"Failed to upload logs, but continuing\"
+                                # Format log data as JSON - simplified approach
+                                LOG_CONTENT=\$(cat /tmp/app1-deployment.log | tr '\n' ' ' | sed 's/\"/\\\\\\"/g')
+                                TIMESTAMP=\$(date +%s000)
+                                
+                                sudo aws logs put-log-events \\
+                                    --log-group-name app-instance-logs \\
+                                    --log-stream-name app1-deployment-logs \\
+                                    --log-events \"[{\\\"timestamp\\\":\$TIMESTAMP,\\\"message\\\":\\\"\$LOG_CONTENT\\\"}]\" \\
+                                    || echo \"Failed to upload logs, but continuing\"
                             else
                                 echo \"AWS CLI not found, skipping log upload\"
                             fi
-                        '
+EOT
                     "
 
                     # Get logs from App2
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 '
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 <<'EOT'
                             echo \"Collecting App2 logs...\"
                             sudo docker logs app2 > /tmp/app2-deployment.log 2>&1
                             
@@ -173,16 +177,19 @@ pipeline {
                                 sudo aws logs create-log-group --log-group-name app-instance-logs || true
                                 sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs || true
                                 
-                                # Format log data as JSON
-                                sudo aws logs put-log-events \
-                                --log-group-name app-instance-logs \
-                                --log-stream-name app2-deployment-logs \
-                                --log-events \"[{\\\"timestamp\\\": $(date +%s000), \\\"message\\\": \\\"$(sed -e \"s/\\\"/\\\\\\\"/g\" /tmp/app2-deployment.log | tr \"\\n\" \" \")\\\"}]\" \
-                                || echo \"Failed to upload logs, but continuing\"
+                                # Format log data as JSON - simplified approach
+                                LOG_CONTENT=\$(cat /tmp/app2-deployment.log | tr '\n' ' ' | sed 's/\"/\\\\\\"/g')
+                                TIMESTAMP=\$(date +%s000)
+                                
+                                sudo aws logs put-log-events \\
+                                    --log-group-name app-instance-logs \\
+                                    --log-stream-name app2-deployment-logs \\
+                                    --log-events \"[{\\\"timestamp\\\":\$TIMESTAMP,\\\"message\\\":\\\"\$LOG_CONTENT\\\"}]\" \\
+                                    || echo \"Failed to upload logs, but continuing\"
                             else
                                 echo \"AWS CLI not found, skipping log upload\"
                             fi
-                        '
+EOT
                     "
                 '''
             }
