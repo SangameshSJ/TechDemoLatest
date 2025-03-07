@@ -9,9 +9,11 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                cleanWs() // Clean the workspace to ensure a fresh clone
                 git branch: 'feature-branch',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
+                sh 'ls -l' // List files in the workspace to verify outputs.json is present
             }
         }
 
