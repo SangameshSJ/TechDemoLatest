@@ -140,19 +140,14 @@ pipeline {
                             # Using put-log-events instead of push
                             if command -v aws &> /dev/null; then
                                 # Create log group and stream if they don't exist
-                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
-                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs || true
+                                sudo aws logs create-log-group --log-group-name app-instance-logs --log-region us-east-2 || true
+                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --log-region us-east-2 || true
                                 
-                                # Format log data for put-log-events
-                                TIMESTAMP=$(date +%s)000
-                                LOG_DATA=$(cat /tmp/app1-deployment.log | sed -e \"s/\\\"/\\\\\\\"/g\" -e \"s/^/{ \\\"timestamp\\\": $TIMESTAMP, \\\"message\\\": \\\"/\" -e \"s/$/\\\" },/\")
-                                LOG_DATA=\"[${LOG_DATA%,}]\"
-                                
-                                # Send logs
-                                echo "$LOG_DATA" > /tmp/formatted-logs.json
-                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --log-events file:///tmp/formatted-logs.json || echo "Failed to upload logs, but continuing"
+                                # Format logs more simply
+                                TIMESTAMP=\\$(date +%s000)
+                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --log-events timestamp=\\$TIMESTAMP,message=\\\"\\$(cat /tmp/app1-deployment.log | tr \\\"\\\n\\\" \" \")\\\" --log-region us-east-2 || echo \"Failed to upload logs, but continuing\"
                             else
-                                echo "AWS CLI not found, skipping log upload"
+                                echo \"AWS CLI not found, skipping log upload\"
                             fi
                         '
                     "
@@ -166,19 +161,14 @@ pipeline {
                             # Using put-log-events instead of push
                             if command -v aws &> /dev/null; then
                                 # Create log group and stream if they don't exist
-                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
-                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs || true
+                                sudo aws logs create-log-group --log-group-name app-instance-logs --log-region us-east-2 || true
+                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --log-region us-east-2 || true
                                 
-                                # Format log data for put-log-events
-                                TIMESTAMP=$(date +%s)000
-                                LOG_DATA=$(cat /tmp/app2-deployment.log | sed -e \"s/\\\"/\\\\\\\"/g\" -e \"s/^/{ \\\"timestamp\\\": $TIMESTAMP, \\\"message\\\": \\\"/\" -e \"s/$/\\\" },/\")
-                                LOG_DATA=\"[${LOG_DATA%,}]\"
-                                
-                                # Send logs
-                                echo "$LOG_DATA" > /tmp/formatted-logs.json
-                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --log-events file:///tmp/formatted-logs.json || echo "Failed to upload logs, but continuing"
+                                # Format logs more simply
+                                TIMESTAMP=\\$(date +%s000)
+                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --log-events timestamp=\\$TIMESTAMP,message=\\\"\\$(cat /tmp/app2-deployment.log | tr \\\"\\\n\\\" \" \")\\\" --log-region us-east-2 || echo \"Failed to upload logs, but continuing\"
                             else
-                                echo "AWS CLI not found, skipping log upload"
+                                echo \"AWS CLI not found, skipping log upload\"
                             fi
                         '
                     "
