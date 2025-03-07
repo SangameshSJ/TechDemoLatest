@@ -253,7 +253,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'feature-branch',
+                git branch: 'feature-ls-sm',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
             }
