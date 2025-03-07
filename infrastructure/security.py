@@ -1,11 +1,9 @@
+# infrastructure/security.py
+
 import pulumi
 import pulumi_aws as aws
 
 def create_security_groups(vpc_id):
-    # If no VPC is provided, return early
-    if not vpc_id:
-        return {}
-
     # Create Security Groups
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
@@ -86,29 +84,8 @@ def create_security_groups(vpc_id):
             "Name": "jenkins-sg",
         })
 
-    # Add Load Balancer Security Group
-    app_lb_sg = aws.ec2.SecurityGroup("app-lb-sg",
-        vpc_id=vpc_id,
-        description="Security group for application load balancer",
-        ingress=[{
-            "protocol": "tcp",
-            "from_port": 80,
-            "to_port": 80,
-            "cidr_blocks": ["0.0.0.0/0"]
-        }],
-        egress=[{
-            "protocol": "-1",
-            "from_port": 0,
-            "to_port": 0,
-            "cidr_blocks": ["0.0.0.0/0"]
-        }],
-        tags={
-            "Name": "app-lb-sg",
-        })
-
     return {
         "bastion_sg": bastion_sg,
         "app_sg": app_sg,
-        "jenkins_sg": jenkins_sg,
-        "app_lb_sg": app_lb_sg
+        "jenkins_sg": jenkins_sg
     }

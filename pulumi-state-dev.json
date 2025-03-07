@@ -1,0 +1,12 @@
+{
+  "last_update": "2025-03-07 11:00:48.913040",
+  "stack": "dev",
+  "resource_count": 23,
+  "outputs": {
+    "stack": "dev",
+    "timestamp": "2025-03-07 11:00:05.240911",
+    "vpc_id": "vpc-0b89f89af3380fa65",
+    "bastion_public_ip": "18.220.221.204",
+    "jenkins_public_ip": "3.140.186.236"
+  }
+}

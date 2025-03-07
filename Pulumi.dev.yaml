@@ -1,5 +1,5 @@
 config:
-  aws:region: us-east-1
+  aws:region: us-east-2
   aws-bastion-iac:instanceType: t2.micro
   aws-bastion-iac:keyName: bastion-key
   aws-bastion-iac:cidrBlock: 10.0.0.0/16

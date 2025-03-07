@@ -1,4 +1,3 @@
-# infrastructure/iam.py
 
 import pulumi
 import pulumi_aws as aws
@@ -18,10 +17,15 @@ def create_iam_resources():
             }],
         }))
 
-    # Attach policies for EC2 to access S3, ECR, etc.
-    role_policy_attachment = aws.iam.RolePolicyAttachment("role-policy-attachment",
+    # Attach S3 read access policy
+    role_policy_attachment_s3 = aws.iam.RolePolicyAttachment("role-policy-attachment-s3",
         role=instance_role.name,
         policy_arn="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess")
+    
+    # Add CloudWatch Logs access
+    role_policy_attachment_cw = aws.iam.RolePolicyAttachment("role-policy-attachment-cw",
+        role=instance_role.name,
+        policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy")
 
     instance_profile = aws.iam.InstanceProfile("instance-profile",
         role=instance_role.name)
