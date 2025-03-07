@@ -127,8 +127,6 @@ pipeline {
             }
         }
 
-
-        // Add this stage after the verification stage
         stage('Collect Deployment Logs') {
             steps {
                 sh '''
@@ -138,7 +136,24 @@ pipeline {
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 '
                             echo \"Collecting App1 logs...\"
                             sudo docker logs app1 > /tmp/app1-deployment.log 2>&1
-                            sudo aws logs push --log-group-name app-instance-logs --log-stream-name deployment-logs /tmp/app1-deployment.log
+                            
+                            # Using put-log-events instead of push
+                            if command -v aws &> /dev/null; then
+                                # Create log group and stream if they don't exist
+                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
+                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs || true
+                                
+                                # Format log data for put-log-events
+                                TIMESTAMP=$(date +%s)000
+                                LOG_DATA=$(cat /tmp/app1-deployment.log | sed -e \"s/\\\"/\\\\\\\"/g\" -e \"s/^/{ \\\"timestamp\\\": $TIMESTAMP, \\\"message\\\": \\\"/\" -e \"s/$/\\\" },/\")
+                                LOG_DATA=\"[${LOG_DATA%,}]\"
+                                
+                                # Send logs
+                                echo "$LOG_DATA" > /tmp/formatted-logs.json
+                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --log-events file:///tmp/formatted-logs.json || echo "Failed to upload logs, but continuing"
+                            else
+                                echo "AWS CLI not found, skipping log upload"
+                            fi
                         '
                     "
 
@@ -147,13 +162,29 @@ pipeline {
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 '
                             echo \"Collecting App2 logs...\"
                             sudo docker logs app2 > /tmp/app2-deployment.log 2>&1
-                            sudo aws logs push --log-group-name app-instance-logs --log-stream-name deployment-logs /tmp/app2-deployment.log
+                            
+                            # Using put-log-events instead of push
+                            if command -v aws &> /dev/null; then
+                                # Create log group and stream if they don't exist
+                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
+                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs || true
+                                
+                                # Format log data for put-log-events
+                                TIMESTAMP=$(date +%s)000
+                                LOG_DATA=$(cat /tmp/app2-deployment.log | sed -e \"s/\\\"/\\\\\\\"/g\" -e \"s/^/{ \\\"timestamp\\\": $TIMESTAMP, \\\"message\\\": \\\"/\" -e \"s/$/\\\" },/\")
+                                LOG_DATA=\"[${LOG_DATA%,}]\"
+                                
+                                # Send logs
+                                echo "$LOG_DATA" > /tmp/formatted-logs.json
+                                sudo aws logs put-log-events --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --log-events file:///tmp/formatted-logs.json || echo "Failed to upload logs, but continuing"
+                            else
+                                echo "AWS CLI not found, skipping log upload"
+                            fi
                         '
                     "
                 '''
             }
         }
-
 
         stage('Cleanup SSH Key') {
             steps {
