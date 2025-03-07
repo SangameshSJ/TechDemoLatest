@@ -10,10 +10,17 @@ pipeline {
         stage('Checkout') {
             steps {
                 cleanWs() // Clean the workspace to ensure a fresh clone
-                git branch: 'feature-branch',
-                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
-                    credentialsId: 'github-https-token'
-                sh 'ls -l' // List files in the workspace to verify outputs.json is present
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'feature-branch']],
+                    extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true, forceClone: true]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
+                        credentialsId: 'github-https-token'
+                    ]]
+                ])
+                sh 'ls -l' // List files in the workspace
+                sh 'cat outputs.json' // Print the content of outputs.json
             }
         }
 
