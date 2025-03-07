@@ -53,9 +53,9 @@ pipeline {
         stage('Setup SSH on Bastion') {
             steps {
                 sh 'chmod 600 $SSH_KEY'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@18.220.201.109:/tmp/app_key'
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
                         chmod 600 /tmp/app_key
                     "
                 '''
@@ -64,12 +64,12 @@ pipeline {
 
         stage('Transfer to Bastion') {
             steps {
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@18.220.201.109:/tmp/'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@18.220.201.109:/tmp/'
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@10.0.2.39:/tmp/
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@10.0.3.250:/tmp/
                     "
                 '''
             }
@@ -78,8 +78,8 @@ pipeline {
         stage('Deploy App 1') {
             steps {
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 '
                             sudo docker load -i /tmp/app1.tar
                             sudo docker stop app1 || true
                             sudo docker rm app1 || true
@@ -94,8 +94,8 @@ pipeline {
         stage('Deploy App 2') {
             steps {
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 '
                             sudo docker load -i /tmp/app2.tar
                             sudo docker stop app2 || true
                             sudo docker rm app2 || true
@@ -110,15 +110,15 @@ pipeline {
         stage('Verify Deployments') {
             steps {
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 '
                             echo \"App 1 Container Status:\"
                             sudo docker ps | grep app1
                         '
                     "
 
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 '
                             echo \"App 2 Container Status:\"
                             sudo docker ps | grep app2
                         '
@@ -134,8 +134,8 @@ pipeline {
                 sh '''
                     echo "Collecting deployment logs..."
                     # Get logs from App1
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.2.39 '
                             echo \"Collecting App1 logs...\"
                             sudo docker logs app1 > /tmp/app1-deployment.log 2>&1
                             sudo aws logs push --log-group-name app-instance-logs --log-stream-name deployment-logs /tmp/app1-deployment.log
@@ -143,8 +143,8 @@ pipeline {
                     "
 
                     # Get logs from App2
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
+                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@10.0.3.250 '
                             echo \"Collecting App2 logs...\"
                             sudo docker logs app2 > /tmp/app2-deployment.log 2>&1
                             sudo aws logs push --log-group-name app-instance-logs --log-stream-name deployment-logs /tmp/app2-deployment.log
@@ -158,7 +158,7 @@ pipeline {
         stage('Cleanup SSH Key') {
             steps {
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
                         rm -f /tmp/app_key || true
                     "
                 '''
@@ -173,7 +173,7 @@ pipeline {
         failure {
             echo "Deployment failed. Please check the logs for more details."
             sh '''
-                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@18.220.201.109 "
                     rm -f /tmp/app_key || true
                 " || true
             '''
