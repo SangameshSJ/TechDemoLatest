@@ -151,7 +151,7 @@ pipeline {
                             # Set the AWS region
                             export AWS_DEFAULT_REGION=us-east-2
                             
-                            # Using put-log-events instead of push
+                            # Using put-log-events
                             if command -v aws &> /dev/null; then
                                 # Create log group and stream if they don't exist
                                 sudo aws logs create-log-group --log-group-name app-instance-logs || true
@@ -204,6 +204,23 @@ EOT
                 '''
             }
         }
+
+
+        stage('Health Check') {
+            steps {
+                // Wait for applications to be ready
+                sh """
+                    # Health check for App1 via bastion
+                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} \
+                    "timeout 300 bash -c 'until curl -s http://${APP1_HOST}/health; do echo \"Waiting for App1...\"; sleep 5; done'"
+                    
+                    # Health check for App2 via bastion
+                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} \
+                    "timeout 300 bash -c 'until curl -s http://${APP2_HOST}/health; do echo \"Waiting for App2...\"; sleep 5; done'"
+                """
+            }
+        }
+
 
         stage('Cleanup SSH Key') {
             steps {
