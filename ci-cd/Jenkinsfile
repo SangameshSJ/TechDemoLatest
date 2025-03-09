@@ -124,6 +124,13 @@ pipeline {
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             echo \"App 1 Container Status:\"
                             sudo docker ps | grep app1
+                            if curl -s -o /dev/null -w \"%{http_code}\" http://localhost:80/ | grep -q 200; then
+                                echo \"Application is responding with HTTP 200\"
+                                exit 0
+                            else
+                                echo \"Application is not responding correctly\"
+                                exit 1
+                            fi
                         '
                     "
 
