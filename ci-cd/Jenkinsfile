@@ -206,22 +206,6 @@ EOT
         }
 
 
-        stage('Health Check') {
-            steps {
-                // Wait for applications to be ready
-                sh """
-                    # Health check for App1 via bastion
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} \
-                    "timeout 300 bash -c 'until curl -s http://${APP1_HOST}/health; do echo \"Waiting for App1...\"; sleep 5; done'"
-                    
-                    # Health check for App2 via bastion
-                    ssh -i ${SSH_KEY_PATH} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} \
-                    "timeout 300 bash -c 'until curl -s http://${APP2_HOST}/health; do echo \"Waiting for App2...\"; sleep 5; done'"
-                """
-            }
-        }
-
-
         stage('Cleanup SSH Key') {
             steps {
                 sh '''
