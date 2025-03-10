@@ -18,18 +18,14 @@ pipeline {
         stage('Load Outputs') {
             steps {
                 script {
-                    // Use readJSON to load the outputs.json file
                     def outputs = readJSON file: 'outputs.json'
                     
-                    // Print the entire outputs JSON for debugging
                     echo "Outputs JSON: ${outputs}"
                     
-                    // Set environment variables
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
                     env.APP2_HOST = outputs.app2_private_ip
                     
-                    // Print the environment variables for debugging
                     echo "BASTION_HOST: ${env.BASTION_HOST}"
                     echo "APP1_HOST: ${env.APP1_HOST}"
                     echo "APP2_HOST: ${env.APP2_HOST}"
