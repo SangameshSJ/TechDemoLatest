@@ -1,7 +1,25 @@
+# infrastructure/outputs.py
+
 import pulumi
 import json
 
+
 def export_outputs(vpc, bastion_instance, jenkins_instance, app1_instance, app2_instance, key_name):
+    """
+    Exports the outputs of the Pulumi stack.
+    
+    This function:
+    - Exports key infrastructure information as Pulumi stack outputs
+    - Saves the outputs to a local JSON file for reference
+    
+    Args:
+        vpc (Vpc): The VPC resource
+        bastion_instance (Instance): The bastion host EC2 instance
+        jenkins_instance (Instance): The Jenkins EC2 instance
+        app1_instance (Instance): The first application EC2 instance
+        app2_instance (Instance): The second application EC2 instance
+        key_name (str): The SSH key name used for the instances
+    """
     # Use `pulumi.Output.all` to resolve multiple outputs at once
     resolved_outputs = pulumi.Output.all(
         vpc_id=vpc.id,
@@ -12,12 +30,21 @@ def export_outputs(vpc, bastion_instance, jenkins_instance, app1_instance, app2_
         ssh_command=pulumi.Output.concat("ssh -i ", key_name, ".pem ec2-user@", bastion_instance.public_ip)
     )
 
+
     # Export the resolved outputs
     resolved_outputs.apply(lambda outputs: pulumi.export("outputs", outputs))
+
 
     # Write the resolved outputs to a JSON file
     resolved_outputs.apply(lambda outputs: write_outputs_to_file(outputs))
 
+
 def write_outputs_to_file(outputs):
+    """
+    Writes infrastructure outputs to a local JSON file.
+    
+    Args:
+        outputs (dict): Dictionary of output values to write to file
+    """
     with open("outputs.json", "w") as f:
         json.dump(outputs, f)

@@ -3,7 +3,22 @@
 import pulumi
 import pulumi_aws as aws
 
+
 def create_security_groups(vpc_id):
+    """
+    Creates security groups for the infrastructure.
+    
+    This function creates three security groups:
+    - Bastion SG: Allows SSH access from the internet
+    - Application SG: Allows SSH from bastion and HTTP/HTTPS from anywhere
+    - Jenkins SG: Allows SSH from bastion and web access on port 8080
+    
+    Args:
+        vpc_id (str): The ID of the VPC to create security groups in
+        
+    Returns:
+        dict: Dictionary containing all created security group resources
+    """
     # Create Security Groups
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
@@ -23,6 +38,7 @@ def create_security_groups(vpc_id):
         tags={
             "Name": "bastion-sg",
         })
+
 
     app_sg = aws.ec2.SecurityGroup("app-sg",
         vpc_id=vpc_id,
@@ -57,6 +73,7 @@ def create_security_groups(vpc_id):
             "Name": "app-sg",
         })
 
+
     jenkins_sg = aws.ec2.SecurityGroup("jenkins-sg",
         vpc_id=vpc_id,
         description="Allow access to Jenkins",
@@ -83,6 +100,7 @@ def create_security_groups(vpc_id):
         tags={
             "Name": "jenkins-sg",
         })
+
 
     return {
         "bastion_sg": bastion_sg,

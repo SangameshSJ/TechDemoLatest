@@ -1,5 +1,8 @@
+# infrastructure/__main__.py
+
 import pulumi
 import pulumi_aws as aws
+
 
 from infrastructure.config import key_name
 from infrastructure.network import create_network_infrastructure
@@ -9,26 +12,34 @@ from infrastructure.compute import create_compute_resources
 from infrastructure.monitoring import create_monitoring_resources
 from infrastructure.outputs import export_outputs
 
-# Create network resources
+
+"""
+Main Pulumi program file that orchestrates the creation of all infrastructure components.
+
+This program implements a secure multi-tier architecture with:
+- A bastion host for secure SSH access
+- Private application servers in multiple availability zones
+- A Jenkins CI/CD server for deployment automation
+- Complete monitoring and logging via CloudWatch
+- Proper IAM permissions for all components
+
+The architecture follows AWS best practices for security, scalability, and resilience.
+"""
+
 network = create_network_infrastructure()
 
-# Create security groups
 security_groups = create_security_groups(network["vpc"].id)
 
-# Create IAM resources
 iam_resources = create_iam_resources()
 
-# Create compute resources
 compute = create_compute_resources(
     network=network,
     security_groups=security_groups,
     instance_profile=iam_resources["instance_profile"]
 )
 
-# Create monitoring resources
 monitoring = create_monitoring_resources()
 
-# Export outputs
 export_outputs(
     vpc=network["vpc"],
     bastion_instance=compute["bastion_instance"],
