@@ -38,7 +38,7 @@ compute = create_compute_resources(
     instance_profile=iam_resources["instance_profile"]
 )
 
-monitoring = create_monitoring_resources()
+monitoring = create_monitoring_resources(compute)
 
 export_outputs(
     vpc=network["vpc"],
