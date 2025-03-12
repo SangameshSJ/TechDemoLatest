@@ -1,5 +1,3 @@
-# infrastructure/iam.py
-
 import pulumi
 import pulumi_aws as aws
 import json

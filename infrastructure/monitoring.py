@@ -18,13 +18,11 @@ def create_monitoring_resources(compute_resources):
     Returns:
         dict: Dictionary containing all created monitoring resources
     """
-    # Get instance IDs from compute resources
     bastion_id = compute_resources["bastion_instance"].id
     jenkins_id = compute_resources["jenkins_instance"].id
     app1_id = compute_resources["app1_instance"].id
     app2_id = compute_resources["app2_instance"].id
 
-    # First, create the CloudWatch Log Groups
     jenkins_log_group = aws.cloudwatch.LogGroup("jenkins-instance-logs",
         name="jenkins-instance-logs",
         retention_in_days=7
@@ -40,8 +38,6 @@ def create_monitoring_resources(compute_resources):
         retention_in_days=7
     )
     
-    # Create CloudWatch dashboard for overall monitoring
-    # We'll use pulumi.Output.all to wait for all instance IDs to be resolved
     pulumi.Output.all(
         bastion_id=bastion_id, 
         jenkins_id=jenkins_id, 
@@ -51,7 +47,6 @@ def create_monitoring_resources(compute_resources):
         lambda ids: create_dashboard(ids, app_log_group.name)
     )
     
-    # Create log metric filters for error monitoring - now depending on the log groups
     jenkins_error_metric = aws.cloudwatch.LogMetricFilter("jenkins-error-metric",
         log_group_name=jenkins_log_group.name,
         pattern="ERROR",
@@ -72,7 +67,6 @@ def create_monitoring_resources(compute_resources):
         }
     )
     
-    # Create alarms based on error metrics
     jenkins_alarm = aws.cloudwatch.MetricAlarm("jenkins-error-alarm",
         comparison_operator="GreaterThanOrEqualToThreshold",
         evaluation_periods=1,
@@ -99,7 +93,6 @@ def create_monitoring_resources(compute_resources):
 
 
 def create_dashboard(ids, app_log_group_name):
-    # Now create the dashboard with the resolved IDs
     dashboard = aws.cloudwatch.Dashboard("infrastructure-dashboard",
         dashboard_name="infrastructure-dashboard",
         dashboard_body=json.dumps({

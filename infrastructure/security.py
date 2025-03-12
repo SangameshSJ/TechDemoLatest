@@ -1,5 +1,3 @@
-# infrastructure/security.py
-
 import pulumi
 import pulumi_aws as aws
 
@@ -19,7 +17,6 @@ def create_security_groups(vpc_id):
     Returns:
         dict: Dictionary containing all created security group resources
     """
-    # Create Security Groups
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
         description="Allow SSH access to the bastion host",
@@ -27,7 +24,7 @@ def create_security_groups(vpc_id):
             "protocol": "tcp",
             "from_port": 22,
             "to_port": 22,
-            "cidr_blocks": ["0.0.0.0/0"],  # In production, restrict to your IP
+            "cidr_blocks": ["0.0.0.0/0"],
         }],
         egress=[{
             "protocol": "-1",
@@ -48,19 +45,19 @@ def create_security_groups(vpc_id):
                 "protocol": "tcp",
                 "from_port": 22,
                 "to_port": 22,
-                "security_groups": [bastion_sg.id],  # Only allow SSH from bastion
+                "security_groups": [bastion_sg.id],
             },
             {
                 "protocol": "tcp",
                 "from_port": 80,
                 "to_port": 80,
-                "cidr_blocks": ["0.0.0.0/0"],  # HTTP access
+                "cidr_blocks": ["0.0.0.0/0"],
             },
             {
                 "protocol": "tcp",
                 "from_port": 443,
                 "to_port": 443,
-                "cidr_blocks": ["0.0.0.0/0"],  # HTTPS access
+                "cidr_blocks": ["0.0.0.0/0"],
             }
         ],
         egress=[{
@@ -82,13 +79,13 @@ def create_security_groups(vpc_id):
                 "protocol": "tcp",
                 "from_port": 22,
                 "to_port": 22,
-                "security_groups": [bastion_sg.id],  # SSH from bastion
+                "security_groups": [bastion_sg.id],
             },
             {
                 "protocol": "tcp",
                 "from_port": 8080,
                 "to_port": 8080,
-                "cidr_blocks": ["0.0.0.0/0"],  # Jenkins web UI
+                "cidr_blocks": ["0.0.0.0/0"],
             }
         ],
         egress=[{

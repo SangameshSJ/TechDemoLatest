@@ -1,5 +1,3 @@
-# infrastructure/network.py
-
 import pulumi
 import pulumi_aws as aws
 from infrastructure.config import region, cidr_block
@@ -20,7 +18,7 @@ def create_network_infrastructure():
     Returns:
         dict: Dictionary containing all created network resources
     """
-    # Create a VPC
+
     vpc = aws.ec2.Vpc("bastion-vpc",
         cidr_block=cidr_block,
         enable_dns_hostnames=True,
@@ -30,7 +28,6 @@ def create_network_infrastructure():
         })
 
 
-    # Create an Internet Gateway
     igw = aws.ec2.InternetGateway("bastion-igw",
         vpc_id=vpc.id,
         tags={
@@ -38,7 +35,6 @@ def create_network_infrastructure():
         })
 
 
-    # Create a public subnet for the bastion host
     public_subnet = aws.ec2.Subnet("bastion-public-subnet",
         vpc_id=vpc.id,
         cidr_block="10.0.1.0/24",
@@ -51,15 +47,14 @@ def create_network_infrastructure():
 
     public_subnet2 = aws.ec2.Subnet("bastion-public-subnet2",
         vpc_id=vpc.id,
-        cidr_block="10.0.4.0/24",  # New CIDR block
-        availability_zone=f"{region}b",  # Different AZ
+        cidr_block="10.0.4.0/24",
+        availability_zone=f"{region}b",
         map_public_ip_on_launch=True,
         tags={
             "Name": "bastion-public-subnet2",
         })
     
     
-    # Create private subnets for the applications
     app1_subnet = aws.ec2.Subnet("app1-private-subnet",
         vpc_id=vpc.id,
         cidr_block="10.0.2.0/24",
@@ -78,7 +73,6 @@ def create_network_infrastructure():
         })
 
 
-    # Create a NAT Gateway for the private subnets
     eip = aws.ec2.Eip("nat-eip",
         vpc=True)
 
@@ -91,7 +85,6 @@ def create_network_infrastructure():
         })
 
 
-    # Create route tables
     public_route_table = aws.ec2.RouteTable("public-rt",
         vpc_id=vpc.id,
         routes=[{
@@ -113,13 +106,11 @@ def create_network_infrastructure():
         })
 
 
-    # Associate route tables with subnets
     public_rt_assoc = aws.ec2.RouteTableAssociation("public-rt-assoc",
         subnet_id=public_subnet.id,
         route_table_id=public_route_table.id)
 
 
-    # Add route table association for the second public subnet
     public_rt_assoc2 = aws.ec2.RouteTableAssociation("public-rt-assoc2",
         subnet_id=public_subnet2.id,
         route_table_id=public_route_table.id)

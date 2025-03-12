@@ -1,10 +1,7 @@
-# infrastructure/config.py
-
 import pulumi
 import pulumi_aws as aws
 
 
-# Configuration
 config = pulumi.Config()
 instance_type = config.get("instanceType") or "t2.micro"
 key_name = config.get("keyName") or "bastion-key"

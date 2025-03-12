@@ -1,5 +1,3 @@
-# infrastructure/loadbalancer.py
-
 import pulumi
 import pulumi_aws as aws
 
@@ -22,7 +20,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
     Returns:
         dict: Dictionary containing all created load balancer resources
     """
-    # Create a security group for the load balancer
+
     alb_sg = aws.ec2.SecurityGroup("alb-sg",
         vpc_id=vpc_id,
         description="Allow HTTP/HTTPS traffic to the load balancer",
@@ -50,7 +48,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "Name": "alb-sg",
         })
     
-    # Create the Application Load Balancer
+
     app_lb = aws.lb.LoadBalancer("app-lb",
         internal=False,
         load_balancer_type="application",
@@ -61,7 +59,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "Name": "app-lb",
         })
     
-    # Create target group for application instances
+
     target_group = aws.lb.TargetGroup("app-tg",
         port=80,
         protocol="HTTP",
@@ -81,14 +79,14 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "Name": "app-tg",
         })
     
-    # Attach targets to the target group
+
     for i, instance_id in enumerate(app_instance_ids):
         target_attachment = aws.lb.TargetGroupAttachment(f"app-tg-attachment-{i}",
             target_group_arn=target_group.arn,
             target_id=instance_id,
             port=80)
     
-    # Create HTTP listener
+
     http_listener = aws.lb.Listener("http-listener",
         load_balancer_arn=app_lb.arn,
         port=80,
@@ -97,7 +95,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "target_group_arn": target_group.arn,
         }])
     
-    # Create a rule to allow the app security group to receive traffic from the ALB
+
     app_sg_ingress_rule = aws.ec2.SecurityGroupRule("app-sg-alb-ingress",
         type="ingress",
         from_port=80,

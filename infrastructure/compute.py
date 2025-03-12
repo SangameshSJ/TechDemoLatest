@@ -1,5 +1,3 @@
-# infrastructure/compute.py
-
 import pulumi
 import pulumi_aws as aws
 from infrastructure.config import instance_type, key_name, ami, bastion_user_data, app_user_data, jenkins_user_data
