@@ -49,6 +49,16 @@ def create_network_infrastructure():
         })
 
 
+    public_subnet2 = aws.ec2.Subnet("bastion-public-subnet2",
+        vpc_id=vpc.id,
+        cidr_block="10.0.4.0/24",  # New CIDR block
+        availability_zone=f"{region}b",  # Different AZ
+        map_public_ip_on_launch=True,
+        tags={
+            "Name": "bastion-public-subnet2",
+        })
+    
+    
     # Create private subnets for the applications
     app1_subnet = aws.ec2.Subnet("app1-private-subnet",
         vpc_id=vpc.id,
@@ -109,6 +119,12 @@ def create_network_infrastructure():
         route_table_id=public_route_table.id)
 
 
+    # Add route table association for the second public subnet
+    public_rt_assoc2 = aws.ec2.RouteTableAssociation("public-rt-assoc2",
+        subnet_id=public_subnet2.id,
+        route_table_id=public_route_table.id)
+
+
     app1_rt_assoc = aws.ec2.RouteTableAssociation("app1-rt-assoc",
         subnet_id=app1_subnet.id,
         route_table_id=private_route_table.id)
@@ -122,6 +138,7 @@ def create_network_infrastructure():
     return {
         "vpc": vpc,
         "public_subnet": public_subnet,
+        "public_subnet2": public_subnet2,
         "app1_subnet": app1_subnet,
         "app2_subnet": app2_subnet
     }
