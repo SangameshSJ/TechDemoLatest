@@ -29,9 +29,9 @@ def create_iam_resources():
         }))
 
 
-    role_policy_attachment_s3 = aws.iam.RolePolicyAttachment("role-policy-attachment-s3",
-        role=instance_role.name,
-        policy_arn="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess")
+    # role_policy_attachment_s3 = aws.iam.RolePolicyAttachment("role-policy-attachment-s3",
+    #     role=instance_role.name,
+    #     policy_arn="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess")
    
 
     role_policy_attachment_cw = aws.iam.RolePolicyAttachment("role-policy-attachment-cw",

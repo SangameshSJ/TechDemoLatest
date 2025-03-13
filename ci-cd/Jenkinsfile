@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none  // We'll specify agents at the stage level
 
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
@@ -8,6 +8,12 @@ pipeline {
 
     stages {
         stage('Checkout') {
+            agent {
+                docker {
+                    image 'alpine/git:latest'
+                    reuseNode true
+                }
+            }
             steps {
                 git branch: 'feature-lb',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
@@ -16,6 +22,12 @@ pipeline {
         }
 
         stage('Load Outputs') {
+            agent {
+                docker {
+                    image 'stedolan/jq:latest'
+                    reuseNode true
+                }
+            }
             steps {
                 script {
                     def outputs = readJSON file: 'outputs.json'
@@ -31,60 +43,62 @@ pipeline {
                     echo "APP2_HOST: ${env.APP2_HOST}"
                 }
             }
-    }
+        }
 
-        stage('Build App 1') {
+        stage('Build Apps') {
+            agent {
+                docker {
+                    image 'docker:dind'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock -u root'
+                }
+            }
             steps {
+                sh 'apk add --no-cache bash'
+                
                 dir('applications/app1') {
                     sh 'docker build -t app1:latest .'
                 }
-            }
-        }
-
-        stage('Build App 2') {
-            steps {
+                
                 dir('applications/app2') {
                     sh 'docker build -t app2:latest .'
                 }
-            }
-        }
-
-        stage('Save Docker Images') {
-            steps {
+                
                 sh 'docker save -o app1.tar app1:latest'
                 sh 'docker save -o app2.tar app2:latest'
             }
         }
 
-        stage('Setup SSH on Bastion') {
-            steps {
-                sh 'chmod 600 $SSH_KEY'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        chmod 600 /tmp/app_key
-                    "
-                '''
+        stage('Deploy to Servers') {
+            agent {
+                docker {
+                    image 'alpine/openssh:latest'
+                    args '-u root'
+                }
             }
-        }
-
-        stage('Transfer to Bastion') {
             steps {
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
+                // Setup SSH on Bastion
+                sh 'mkdir -p ~/.ssh'
+                sh 'chmod 600 $SSH_KEY'
+                sh 'cp $SSH_KEY ~/.ssh/id_rsa'
+                sh 'chmod 600 ~/.ssh/id_rsa'
+                
+                // Transfer Images
+                sh 'scp -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
+                sh 'scp -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
+                
+                // Setup Key on Bastion and transfer to app servers
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        cp ~/.ssh/id_rsa /tmp/app_key
+                        chmod 600 /tmp/app_key
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
                         scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
                     "
                 '''
-            }
-        }
-
-        stage('Deploy App 1') {
-            steps {
+                
+                // Deploy App 1
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             sudo docker load -i /tmp/app1.tar
                             sudo docker stop app1 || true
@@ -94,13 +108,10 @@ pipeline {
                         '
                     "
                 '''
-            }
-        }
-
-        stage('Deploy App 2') {
-            steps {
+                
+                // Deploy App 2
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             sudo docker load -i /tmp/app2.tar
                             sudo docker stop app2 || true
@@ -114,9 +125,20 @@ pipeline {
         }
 
         stage('Verify Deployments') {
+            agent {
+                docker {
+                    image 'alpine/openssh:latest'
+                    args '-u root'
+                }
+            }
             steps {
+                sh 'mkdir -p ~/.ssh'
+                sh 'chmod 600 $SSH_KEY'
+                sh 'cp $SSH_KEY ~/.ssh/id_rsa'
+                sh 'chmod 600 ~/.ssh/id_rsa'
+                
                 sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} '
                             echo \"App 1 Container Status:\"
                             sudo docker ps | grep app1
@@ -130,7 +152,7 @@ pipeline {
                         '
                     "
 
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} '
                             echo \"App 2 Container Status:\"
                             sudo docker ps | grep app2
@@ -148,12 +170,23 @@ pipeline {
         }
 
         stage('Collect Deployment Logs') {
+            agent {
+                docker {
+                    image 'alpine/openssh:latest'
+                    args '-u root'
+                }
+            }
             steps {
+                sh 'mkdir -p ~/.ssh'
+                sh 'chmod 600 $SSH_KEY'
+                sh 'cp $SSH_KEY ~/.ssh/id_rsa'
+                sh 'chmod 600 ~/.ssh/id_rsa'
+                
                 sh '''
                     echo "Collecting deployment logs..."
                     
                     # Get logs from App1
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} <<'EOT'
                             echo \"Collecting App1 logs...\"
                             sudo docker logs app1 > /tmp/app1-deployment.log 2>&1
@@ -182,16 +215,17 @@ pipeline {
 EOT
                     "
 
-                    # Get logs from App2
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    # Get logs from App2 (similar approach)
+                    ssh -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} <<'EOT'
+                            # Similar log collection for App2
                             echo \"Collecting App2 logs...\"
                             sudo docker logs app2 > /tmp/app2-deployment.log 2>&1
                             
                             # Set the AWS region
                             export AWS_DEFAULT_REGION=us-east-2
                             
-                            # Using put-log-events instead of push
+                            # Using put-log-events
                             if command -v aws &> /dev/null; then
                                 # Create log group and stream if they don't exist
                                 sudo aws logs create-log-group --log-group-name app-instance-logs || true
@@ -215,9 +249,14 @@ EOT
             }
         }
 
-
         stage('Cleanup SSH Key') {
+            agent {
+                docker {
+                    image 'alpine/openssh:latest'
+                }
+            }
             steps {
+                sh 'chmod 600 $SSH_KEY'
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
                         rm -f /tmp/app_key || true
@@ -228,25 +267,16 @@ EOT
     }
 
     post {
-        success {
-            echo "Deployment completed successfully!"
-        }
-        failure {
-            echo "Deployment failed. Please check the logs for more details."
-            sh '''
-                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                    rm -f /tmp/app_key || true
-                " || true
-            '''
-        }
         always {
-            sh '''
-                docker rmi app1:latest || true
-                docker rmi app2:latest || true
-                rm -f app1.tar || true
-                rm -f app2.tar || true
-            '''
-            cleanWs()
+            node('') {
+                sh '''
+                    docker rmi app1:latest || true
+                    docker rmi app2:latest || true
+                    rm -f app1.tar || true
+                    rm -f app2.tar || true
+                '''
+                cleanWs()
+            }
         }
     }
 }
