@@ -1,6 +1,10 @@
 pipeline {
     agent {
-        label 'docker-agent'
+        docker {
+            image 'docker:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'  // Mount Docker socket
+            label 'docker-agent'  // Ensure this matches your agent label
+        }
     }
 
     environment {
