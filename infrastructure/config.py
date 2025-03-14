@@ -170,15 +170,12 @@ amazon-linux-extras install -y docker
 systemctl start docker
 systemctl enable docker
 
-
-# Create Docker group
+# Create Docker group and add ec2-user
 groupadd docker || true
 usermod -aG docker ec2-user
 
-
 # Install CloudWatch agent
 yum install -y amazon-cloudwatch-agent
-
 
 # Create CloudWatch agent configuration
 cat > /opt/aws/amazon-cloudwatch-agent/bin/config.json <<EOL
@@ -222,72 +219,117 @@ cat > /opt/aws/amazon-cloudwatch-agent/bin/config.json <<EOL
 }
 EOL
 
-
 # Start CloudWatch agent
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json
-
-
-# Create script to install required plugins
-cat > /var/jenkins_home/install-plugins.sh <<EOL
-#!/bin/bash
-
-# Wait for Jenkins to start
-until curl -s -f http://localhost:8080/login > /dev/null; do
-  sleep 10
-  echo "Waiting for Jenkins to start..."
-done
-
-# Get the initial admin password
-ADMIN_PASSWORD=\$(cat /var/jenkins_home/secrets/initialAdminPassword)
-
-# Install required plugins
-jenkins-plugin-cli --plugins docker-plugin docker-workflow configuration-as-code job-dsl workflow-aggregator git matrix-auth credentials-binding pipeline-utility-steps ssh-agent
-
-# Restart Jenkins to apply plugin changes
-curl -X POST -u admin:\$ADMIN_PASSWORD http://localhost:8080/restart
-EOL
-
-chmod +x /var/jenkins_home/install-plugins.sh
-
-# Execute the script in the background after Jenkins starts
-(sleep 30 && /var/jenkins_home/install-plugins.sh) &
 
 # Install Docker Compose
 curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
-
 # Create Jenkins home directory
 mkdir -p /var/jenkins_home
 chmod 777 /var/jenkins_home
 
-# Create a Jenkins casc (Configuration as Code) file
-mkdir -p /var/jenkins_casc
-cat > /var/jenkins_casc/jenkins.yaml <<EOL
-jenkins:
-  systemMessage: "Jenkins configured automatically with Docker agents"
-  numExecutors: 0  # Set master node executors to 0
-  clouds:
-    - docker:
-        name: "docker"
-        dockerHost: "unix:///var/run/docker.sock"
-        containerCap: 10
-        templates:
-          - name: "docker-agent"
-            image: "jenkins/agent:latest"
-            pullTimeout: 300
-            connectTimeout: 300
-            remoteFs: "/home/jenkins/agent"
-            instanceCap: 5
-            mode: EXCLUSIVE
-            labelString: "docker-agent"
-            volumes:
-              - "/var/run/docker.sock:/var/run/docker.sock"
-            environment:
-              - "JENKINS_AGENT_WORKDIR=/home/jenkins/agent"
-            connector:
-              attach:
-                user: "jenkins"
+# Create init.groovy.d directory for startup scripts
+mkdir -p /var/jenkins_home/init.groovy.d
+
+# Create a script to configure Docker agents
+cat > /var/jenkins_home/init.groovy.d/configure-docker-agents.groovy <<EOL
+import jenkins.model.*
+import hudson.model.*
+import com.cloudbees.plugins.credentials.*
+import com.cloudbees.plugins.credentials.common.*
+import com.cloudbees.plugins.credentials.domains.*
+import com.cloudbees.jenkins.plugins.sshcredentials.impl.*
+import hudson.plugins.sshslaves.*
+import hudson.plugins.sshslaves.verifiers.*
+import hudson.slaves.*
+import hudson.slaves.EnvironmentVariablesNodeProperty.Entry
+import org.jenkinsci.plugins.docker.workflow.*
+import io.jenkins.docker.client.*
+import io.jenkins.docker.connector.*
+import io.jenkins.docker.connector.DockerComputerAttachConnector.DockerComputerAttachConnectorDescriptor
+
+// Configure Docker Cloud
+def instance = Jenkins.getInstance()
+
+// Wait for plugins to load
+Thread.sleep(10000)
+
+try {
+    // Attempt to load Docker plugin classes
+    def dockerClass = io.jenkins.docker.client.DockerAPI.class
+    def dockerCloudClass = io.jenkins.docker.DockerCloud.class
+    
+    // Create Docker cloud configuration
+    def dockerApi = new io.jenkins.docker.client.DockerAPI(new io.jenkins.docker.client.DockerServerEndpoint("unix:///var/run/docker.sock", null))
+    
+    // Create Docker template
+    def template = new io.jenkins.docker.DockerTemplate(
+        "jenkins/agent:latest",
+        new io.jenkins.docker.connector.DockerComputerAttachConnector(),
+        io.jenkins.docker.DockerTemplate.DescriptorImpl.DEFAULT_LABELS,
+        "/home/jenkins/agent",
+        "/usr/local/bin/jenkins-agent"
+    )
+    
+    template.setLabelString("docker-agent")
+    template.setPullTimeout(300)
+    template.setRemoteFs("/home/jenkins/agent")
+    template.setInstanceCapStr("5")
+    template.setMode(Node.Mode.EXCLUSIVE)
+    
+    // Add volume mount for Docker socket
+    def volumeList = new ArrayList<io.jenkins.docker.DockerTemplate.VolumeConfiguration>()
+    volumeList.add(new io.jenkins.docker.DockerTemplate.VolumeConfiguration("/var/run/docker.sock", "/var/run/docker.sock"))
+    template.setVolumes(volumeList)
+    
+    // Create Docker cloud with template
+    def dockerCloud = new io.jenkins.docker.DockerCloud(
+        "docker", 
+        new ArrayList<io.jenkins.docker.DockerTemplate>(Arrays.asList(template)),
+        10,
+        dockerApi
+    )
+    
+    // Add cloud to Jenkins
+    def clouds = instance.clouds
+    clouds.add(dockerCloud)
+    instance.save()
+    println("Docker agent cloud configured successfully")
+} catch (Exception e) {
+    println("Error configuring Docker cloud: " + e.message)
+    e.printStackTrace()
+}
+EOL
+
+# Create init script to install plugins
+cat > /var/jenkins_home/init.groovy.d/install-plugins.groovy <<EOL
+import jenkins.model.*
+import hudson.util.*
+import jenkins.install.*
+import jenkins.security.s2m.*
+
+def jenkins = Jenkins.getInstance()
+
+// Skip initial setup wizard
+jenkins.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
+
+// Set to LegacySecurityRealm to accept the initial admin user
+def realm = jenkins.getSecurityRealm()
+if (realm instanceof hudson.security.SecurityRealm) {
+    // Skip the setup wizard entirely
+    jenkins.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
+}
+
+// Disable CLI over Remoting
+jenkins.getDescriptor("jenkins.CLI").get().setEnabled(false)
+
+// Enable security warnings
+AdminWhitelistRule.enabled = true
+
+// Save the configurations
+jenkins.save()
 EOL
 
 # Run Jenkins using Docker Compose
@@ -305,10 +347,9 @@ services:
       - /var/jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
-      - /var/jenkins_casc:/var/jenkins_casc
+      - /usr/local/bin/docker-compose:/usr/local/bin/docker-compose
     environment:
       - JENKINS_OPTS="--prefix=/jenkins"
-      - CASC_JENKINS_CONFIG=/var/jenkins_casc/jenkins.yaml
     logging:
       driver: "json-file"
       options:
@@ -316,33 +357,43 @@ services:
         max-file: "3"
 EOL
 
-
-# Create script to install required plugins
-cat > /var/jenkins_home/install-plugins.sh <<EOL
+# Create script to install needed plugins
+cat > /home/ec2-user/install-plugins.sh <<EOL
 #!/bin/bash
-
-# Wait for Jenkins to start
-until curl -s -f http://localhost:8080/login > /dev/null; do
-  sleep 10
-  echo "Waiting for Jenkins to start..."
+# Wait for Jenkins to become available
+echo "Waiting for Jenkins to start..."
+until curl -s http://localhost:8080 > /dev/null; do
+    sleep 10
 done
 
-# Get the initial admin password
-ADMIN_PASSWORD=\$(cat /var/jenkins_home/secrets/initialAdminPassword)
+# Get the Jenkins CLI jar
+echo "Downloading Jenkins CLI..."
+curl -s -o /tmp/jenkins-cli.jar http://localhost:8080/jnlpJars/jenkins-cli.jar
 
-# Install required plugins
-jenkins-plugin-cli --plugins docker-plugin docker-workflow configuration-as-code job-dsl workflow-aggregator git matrix-auth credentials-binding pipeline-utility-steps ssh-agent
+# Get initial admin password
+ADMIN_PWD=\$(cat /var/jenkins_home/secrets/initialAdminPassword)
 
-# Restart Jenkins to apply plugin changes
-curl -X POST -u admin:\$ADMIN_PASSWORD http://localhost:8080/restart
+# Install necessary plugins
+echo "Installing plugins..."
+java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:\$ADMIN_PWD install-plugin \
+    docker-plugin \
+    docker-workflow \
+    workflow-aggregator \
+    git \
+    ssh-agent \
+    pipeline-utility-steps \
+    credentials-binding
+
+# Restart Jenkins to apply changes
+echo "Restarting Jenkins..."
+java -jar /tmp/jenkins-cli.jar -s http://localhost:8080/ -auth admin:\$ADMIN_PWD safe-restart
 EOL
 
-chmod +x /var/jenkins_home/install-plugins.sh
-
-# Execute the script in the background after Jenkins starts
-(sleep 30 && /var/jenkins_home/install-plugins.sh) &
-
+chmod +x /home/ec2-user/install-plugins.sh
 
 # Start Jenkins using Docker Compose
 cd /home/ec2-user && docker-compose up -d
+
+# Start plugin installation in the background (after Jenkins has time to start)
+(sleep 60 && /home/ec2-user/install-plugins.sh) &
 """

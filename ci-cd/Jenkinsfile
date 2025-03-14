@@ -1,5 +1,7 @@
 pipeline {
-    agent none // Don't use a global agent
+    agent {
+        label 'docker-agent'
+    }
 
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
@@ -8,9 +10,7 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            agent {
-                label 'docker-agent' // Use our Docker agent
-            }
+            
             steps {
                 git branch: 'feature-jenkins-agent',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
@@ -19,9 +19,7 @@ pipeline {
         }
 
         stage('Load Outputs') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 script {
                     def outputs = readJSON file: 'outputs.json'
@@ -40,9 +38,7 @@ pipeline {
         }
 
         stage('Build App 1') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 dir('applications/app1') {
                     sh 'docker build -t app1:latest .'
@@ -51,9 +47,7 @@ pipeline {
         }
 
         stage('Build App 2') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 dir('applications/app2') {
                     sh 'docker build -t app2:latest .'
@@ -62,9 +56,7 @@ pipeline {
         }
 
         stage('Save Docker Images') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 sh 'docker save -o app1.tar app1:latest'
                 sh 'docker save -o app2.tar app2:latest'
@@ -72,9 +64,7 @@ pipeline {
         }
 
         stage('Setup SSH on Bastion') {
-            agent {
-                label 'docker-agent'
-            }
+             
             steps {
                 sh 'chmod 600 $SSH_KEY'
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
@@ -87,9 +77,7 @@ pipeline {
         }
 
         stage('Transfer to Bastion') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
                 sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
@@ -103,9 +91,7 @@ pipeline {
         }
 
         stage('Deploy App 1') {
-            agent {
-                label 'docker-agent'
-            }
+            
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
@@ -122,9 +108,7 @@ pipeline {
         }
 
         stage('Deploy App 2') {
-            agent {
-                label 'docker-agent'
-            }
+             
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
@@ -141,9 +125,7 @@ pipeline {
         }
 
         stage('Verify Deployments') {
-            agent {
-                label 'docker-agent'
-            }
+             
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
@@ -178,9 +160,7 @@ pipeline {
         }
 
         stage('Collect Deployment Logs') {
-            agent {
-                label 'docker-agent'
-            }
+             
             steps {
                 sh '''
                     echo "Collecting deployment logs..."
@@ -249,9 +229,7 @@ EOT
         }
 
         stage('Cleanup SSH Key') {
-            agent {
-                label 'docker-agent'
-            }
+             
             steps {
                 sh '''
                     ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
