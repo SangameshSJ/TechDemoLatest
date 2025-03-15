@@ -59,5 +59,6 @@ export_outputs(
     app1_instance=compute["app1_instance"],
     app2_instance=compute["app2_instance"],
     load_balancer=load_balancer["app_lb"], 
-    key_name=key_name
+    key_name=key_name,
+    environment="staging"
 )

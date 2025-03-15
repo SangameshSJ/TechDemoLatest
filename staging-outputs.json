@@ -1,0 +1,1 @@
+{"vpc_id": "vpc-01aedc785396c391b", "bastion_public_ip": "54.164.100.63", "jenkins_public_ip": "3.84.17.66", "app1_private_ip": "10.0.2.62", "app2_private_ip": "10.0.3.185", "app_endpoint": "app-lb-fbab03d-57863128.us-east-1.elb.amazonaws.com", "ssh_command": "ssh -i bastion-key.pem ec2-user@54.164.100.63", "environment": "staging"}

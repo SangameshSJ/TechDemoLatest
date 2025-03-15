@@ -79,18 +79,12 @@ def create_security_groups(vpc_id):
                 "protocol": "tcp",
                 "from_port": 22,
                 "to_port": 22,
-                "security_groups": [bastion_sg.id],  # SSH from bastion
+                "security_groups": [bastion_sg.id],
             },
             {
                 "protocol": "tcp",
                 "from_port": 8080,
                 "to_port": 8080,
-                "cidr_blocks": ["0.0.0.0/0"],
-            },
-            {
-                "protocol": "tcp",
-                "from_port": 50000,
-                "to_port": 50000,
                 "cidr_blocks": ["0.0.0.0/0"],
             }
         ],
