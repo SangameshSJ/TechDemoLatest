@@ -245,30 +245,24 @@ EOT
 
     post {
         success {
-            node('docker-agent') {
-                echo "Deployment completed successfully!"
-            }
+            echo "Deployment completed successfully!"
         }
         failure {
-            node('docker-agent') {
-                echo "Deployment failed. Please check the logs for more details."
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        rm -f /tmp/app_key || true
-                    " || true
-                '''
-            }
+            echo "Deployment failed. Please check the logs for more details."
+            sh '''
+                ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                    rm -f /tmp/app_key || true
+                " || true
+            '''
         }
         always {
-            node('docker-agent') {
-                sh '''
-                    docker rmi app1:latest || true
-                    docker rmi app2:latest || true
-                    rm -f app1.tar || true
-                    rm -f app2.tar || true
-                '''
-                cleanWs()
-            }
+            sh '''
+                docker rmi app1:latest || true
+                docker rmi app2:latest || true
+                rm -f app1.tar || true
+                rm -f app2.tar || true
+            '''
+            cleanWs()
         }
     }
 }
