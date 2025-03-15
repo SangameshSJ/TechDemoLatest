@@ -9,7 +9,7 @@ pipeline {
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
-        SSH_KEY = credentials("${params.ENVIRONMENT}-bastion-key")
+        SSH_KEY = credentials("bastion-key")
     }
 
     stages {
@@ -24,7 +24,6 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    // Load the proper environment's output file
                     def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
                     
                     echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
