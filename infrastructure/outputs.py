@@ -32,7 +32,6 @@ def export_outputs(vpc, bastion_instance, jenkins_instance, app1_instance, app2_
 
     resolved_outputs.apply(lambda outputs: pulumi.export("outputs", outputs))
 
-    # Write to environment-specific file
     resolved_outputs.apply(lambda outputs: write_outputs_to_file(outputs, environment))
 
 def write_outputs_to_file(outputs, environment):

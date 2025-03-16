@@ -1,5 +1,3 @@
-# infrastructure/monitoring.py
-
 import pulumi
 import pulumi_aws as aws
 import json
@@ -39,7 +37,7 @@ def create_monitoring_resources(compute_resources):
     )
     
     pulumi.Output.all(
-        bastion_id=bastion_id, 
+        bastion_id=bastion_id,
         jenkins_id=jenkins_id, 
         app1_id=app1_id, 
         app2_id=app2_id
@@ -74,7 +72,7 @@ def create_monitoring_resources(compute_resources):
         namespace="CustomMetrics",
         period=300,
         statistic="Sum",
-        threshold=5,
+        threshold=15,
         alarm_description="Alarm when Jenkins error count exceeds threshold",
         insufficient_data_actions=[],
         dimensions={
@@ -171,19 +169,6 @@ def create_dashboard(ids, app_log_group_name):
                         "stat": "Average",
                         "region": aws.config.region,
                         "title": "CPU Credit Usage"
-                    }
-                },
-                {
-                    "type": "log",
-                    "x": 0, 
-                    "y": 12,
-                    "width": 24,
-                    "height": 6,
-                    "properties": {
-                        "query": f"SOURCE '{app_log_group_name}' | fields @timestamp, @message\n| sort @timestamp desc\n| limit 20",
-                        "region": aws.config.region,
-                        "title": "Application Logs",
-                        "view": "table"
                     }
                 }
             ]

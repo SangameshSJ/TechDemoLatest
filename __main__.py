@@ -1,7 +1,7 @@
 import pulumi
 import pulumi_aws as aws
 
-from infrastructure.config import key_name
+from infrastructure.config import key_name, environment
 from infrastructure.network import create_network_infrastructure
 from infrastructure.security import create_security_groups
 from infrastructure.iam import create_iam_resources
@@ -60,5 +60,5 @@ export_outputs(
     app2_instance=compute["app2_instance"],
     load_balancer=load_balancer["app_lb"], 
     key_name=key_name,
-    environment="staging"
+    environment=environment
 )
