@@ -15,7 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'feature-production',
+                git branch: 'feature-staging',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
             }
