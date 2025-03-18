@@ -4,3 +4,4 @@ config:
   tech-project:keyName: production-bastion-key
   tech-project:instanceType: t2.micro
   tech-project:jenkinsInstanceType: t3.small
+encryptionsalt: v1:oXJxnlSWdmc=:v1:IVuy/d4Dl6crBNgk:g+2B6uZugscSwWbCAhCiVG09qc72AA==

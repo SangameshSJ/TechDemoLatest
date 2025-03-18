@@ -4,3 +4,4 @@ config:
   tech-project:jenkinsInstanceType: t3.small
   tech-project:keyName: bastion-key
   tech-project:instanceType: t2.micro
+encryptionsalt: v1:QDKHu21PUEI=:v1:zhN6IuvtoMBC7Q2D:HMDm/pMFmsMWYircc8EbdZrjt1iSgg==
