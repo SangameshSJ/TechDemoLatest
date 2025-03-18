@@ -9,13 +9,13 @@ pipeline {
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
-        SSH_KEY = credentials("bastion-key")
+        SSH_KEY = credentials("production-bastion-key")
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'feature-staging',
+                git branch: 'feature-production',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
             }
