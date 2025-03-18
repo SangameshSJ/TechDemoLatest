@@ -12,6 +12,7 @@ pipeline {
         SSH_KEY = credentials("bastion-key")
     }
 
+
     stages {
         stage('Checkout') {
             steps {
