@@ -103,8 +103,8 @@ def create_dashboard(ids, app_log_group_name):
                     "height": 6,
                     "properties": {
                         "metrics": [
-                            ["AWS/EC2", "CPUUtilization", "InstanceId", ids["bastion_id"]],
                             ["AWS/EC2", "CPUUtilization", "InstanceId", ids["jenkins_id"]],
+                            ["AWS/EC2", "CPUUtilization", "InstanceId", ids["bastion_id"]],
                             ["AWS/EC2", "CPUUtilization", "InstanceId", ids["app1_id"]],
                             ["AWS/EC2", "CPUUtilization", "InstanceId", ids["app2_id"]]
                         ],
