@@ -9,7 +9,7 @@ pipeline {
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
-        SSH_KEY_FILE = credentials("production-bastion-key")
+        SSH_KEY = credentials("production-bastion-key")
     }
 
     stages {
@@ -60,13 +60,13 @@ pipeline {
 
         stage('Setup SSH on Bastion') {
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'production-bastion-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-                    sh '''
-                        chmod 600 ${SSH_KEY_FILE}
-                        scp -i ${SSH_KEY_FILE} -o StrictHostKeyChecking=no ${SSH_KEY_FILE} ec2-user@${BASTION_HOST}:/tmp/app_key
-                        ssh -i ${SSH_KEY_FILE} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
-                    '''
-                }
+                sh 'chmod 600 $SSH_KEY'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        chmod 600 /tmp/app_key
+                    "
+                '''
             }
         }
 
