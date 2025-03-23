@@ -1,30 +1,30 @@
 import pulumi
 import pulumi_aws as aws
 
-# Stack-specific configuration
-config = pulumi.Config()
-environment = config.get("environment") or "staging"  # Default to staging
 
-# Environment-specific parameters
+config = pulumi.Config()
+environment = config.get("environment") or "staging"
+
+
 instance_type = {
     "staging": "t2.micro",
-    "production": "t2.small"
+    "production": "t2.micro"
 }[environment]
 
 key_name = config.get("keyName") or f"{environment}-bastion-key"
 cidr_block = config.get("cidrBlock") or "10.0.0.0/16"
 region = aws.config.region or "us-east-1"
 
-# Tags to identify environment
+
 default_tags = {
     "Environment": environment,
     "ManagedBy": "Pulumi"
 }
 
-# Resources naming convention with environment prefix
+
 name_prefix = f"{environment}-"
 
-# S3 state bucket for remote state
+
 state_bucket = f"pulumi-state-{environment}"
 jenkins_instance_type = config.get("jenkinsInstanceType") or "t3.small"
 
