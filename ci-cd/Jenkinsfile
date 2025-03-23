@@ -24,21 +24,21 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    echo "Current workspace: ${WORKSPACE}"
-                    echo "Looking for file: ${params.ENVIRONMENT}-outputs.json"
-                    
-                    // Check if the file exists
-                    def filePath = "${params.ENVIRONMENT}-outputs.json"
-                    if (fileExists(filePath)) {
-                        echo "File exists: ${filePath}"
-                        def outputs = readJSON file: filePath
+                    try {
+                        def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
                         echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                        
+                        // Validate required fields
+                        if (!outputs.bastion_public_ip || !outputs.app1_private_ip || !outputs.app2_private_ip) {
+                            error "Required fields are missing in the JSON file."
+                        }
                         
                         env.BASTION_HOST = outputs.bastion_public_ip
                         env.APP1_HOST = outputs.app1_private_ip
                         env.APP2_HOST = outputs.app2_private_ip
-                    } else {
-                        error "File not found: ${filePath}"
+                        echo "BASTION_HOST: ${env.BASTION_HOST}"
+                    } catch (Exception e) {
+                        error "Failed to read or parse JSON file: ${e.message}"
                     }
                 }
             }
