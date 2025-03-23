@@ -3,7 +3,7 @@ pipeline {
 
     parameters {
         choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
-        booleanParam(name: 'APPROVE_PRODUCTION', description: 'Approve Production Deployment')
+        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
     }
 
     environment {
