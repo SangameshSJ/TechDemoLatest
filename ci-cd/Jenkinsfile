@@ -24,7 +24,7 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    def outputs = readJSON file: "staging-outputs.json"
+                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
                     
                     echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
                     
