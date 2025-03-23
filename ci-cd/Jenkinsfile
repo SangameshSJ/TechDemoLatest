@@ -24,13 +24,22 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
+                    echo "Current workspace: ${WORKSPACE}"
+                    echo "Looking for file: ${params.ENVIRONMENT}-outputs.json"
                     
-                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
-                    
-                    env.BASTION_HOST = outputs.bastion_public_ip
-                    env.APP1_HOST = outputs.app1_private_ip
-                    env.APP2_HOST = outputs.app2_private_ip
+                    // Check if the file exists
+                    def filePath = "${params.ENVIRONMENT}-outputs.json"
+                    if (fileExists(filePath)) {
+                        echo "File exists: ${filePath}"
+                        def outputs = readJSON file: filePath
+                        echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                        
+                        env.BASTION_HOST = outputs.bastion_public_ip
+                        env.APP1_HOST = outputs.app1_private_ip
+                        env.APP2_HOST = outputs.app2_private_ip
+                    } else {
+                        error "File not found: ${filePath}"
+                    }
                 }
             }
         }
