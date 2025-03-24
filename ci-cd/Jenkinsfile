@@ -29,6 +29,7 @@ pipeline {
                     
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
                     echo "Looking for file: ${jsonFile}"
+                    echo "Looking for file: ${jsonFile}"
                     
                     if (fileExists(jsonFile)) {
                         def outputs = readJSON file: jsonFile
