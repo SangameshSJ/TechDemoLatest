@@ -25,28 +25,25 @@ pipeline {
             steps {
                 script {
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
+                    echo "Looking for file: ${jsonFile}"
+                    
+                    // Read the file content as text
                     def jsonContent = readFile(file: jsonFile)
                     
-                    // Extract values using simple string manipulation
-                    env.BASTION_HOST = extractValueFromJson(jsonContent, "bastion_public_ip")
-                    env.APP1_HOST = extractValueFromJson(jsonContent, "app1_private_ip")
-                    env.APP2_HOST = extractValueFromJson(jsonContent, "app2_private_ip")
+                    // Parse JSON using JsonSlurper (safer approach in Jenkins)
+                    def jsonSlurper = new groovy.json.JsonSlurper()
+                    def outputs = jsonSlurper.parseText(jsonContent)
+                    
+                    // Set environment variables
+                    env.BASTION_HOST = outputs.bastion_public_ip
+                    env.APP1_HOST = outputs.app1_private_ip
+                    env.APP2_HOST = outputs.app2_private_ip
                     
                     echo "BASTION_HOST: ${env.BASTION_HOST}"
                     echo "APP1_HOST: ${env.APP1_HOST}"
                     echo "APP2_HOST: ${env.APP2_HOST}"
                 }
             }
-        }
-
-        // Helper function to extract values from JSON string
-        def extractValueFromJson(String json, String key) {
-            def pattern = "\"${key}\"\\s*:\\s*\"([^\"]*)\"" 
-            def matcher = (json =~ pattern)
-            if (matcher.find()) {
-                return matcher.group(1)
-            }
-            return ""
         }
 
         stage('Build App 1') {
