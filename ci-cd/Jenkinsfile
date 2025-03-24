@@ -1,14 +1,9 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
-        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
-    }
-
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        STACK_NAME = "${params.ENVIRONMENT}"
+        STACK_NAME = "production"
         SSH_KEY = credentials("production-bastion-key")
     }
 
@@ -18,43 +13,19 @@ pipeline {
                 git branch: 'feature-production',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
-                
-                // Debug step to see workspace contents
-                sh 'ls -la'
             }
         }
 
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    try {
-                        // Check file existence
-                        sh "ls -la ${params.ENVIRONMENT}-outputs.json"
-                        
-                        // Show file content
-                        sh "cat ${params.ENVIRONMENT}-outputs.json"
-                        
-                        // Read file content to variable
-                        def jsonContent = readFile(file: "${params.ENVIRONMENT}-outputs.json").trim()
-                        echo "Raw JSON content: ${jsonContent}"
-                        
-                        // Parse JSON with proper method
-                        def outputs = new groovy.json.JsonSlurperClassic().parseText(jsonContent)
-                        echo "Parsed JSON for ${params.ENVIRONMENT}: ${outputs}"
-                        
-                        // Set environment variables safely
-                        env.BASTION_HOST = outputs.bastion_public_ip.toString()
-                        env.APP1_HOST = outputs.app1_private_ip.toString()
-                        env.APP2_HOST = outputs.app2_private_ip.toString()
-                        
-                        // Verify variables
-                        echo "BASTION_HOST: ${env.BASTION_HOST}"
-                        echo "APP1_HOST: ${env.APP1_HOST}"
-                        echo "APP2_HOST: ${env.APP2_HOST}"
-                    } catch (Exception e) {
-                        echo "Error in Load Environment Outputs stage: ${e.message}"
-                        error "Failed to process JSON: ${e.message}"
-                    }
+                    def outputs = readJSON file: "production-outputs.json"
+                    
+                    echo "Outputs JSON for production: ${outputs}"
+                    
+                    env.BASTION_HOST = outputs.bastion_public_ip
+                    env.APP1_HOST = outputs.app1_private_ip
+                    env.APP2_HOST = outputs.app2_private_ip
                 }
             }
         }
