@@ -24,20 +24,17 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    sh 'pwd'
-                    sh 'ls -la'
-                    
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
                     echo "Looking for file: ${jsonFile}"
-                    sh "cat ${jsonFile}"
                     
-                    // Parse the JSON file into an object
-                    def outputs = readJSON file: jsonFile
-                    echo "output: ${outputs}"
-                    // Now set environment variables from the parsed object
-                    env.BASTION_HOST = outputs.bastion_public_ip
-                    env.APP1_HOST = outputs.app1_private_ip
-                    env.APP2_HOST = outputs.app2_private_ip
+                    // Read the bastion_public_ip using grep
+                    env.BASTION_HOST = sh(script: "grep -o '\"bastion_public_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
+                    
+                    // Read the app1_private_ip using grep
+                    env.APP1_HOST = sh(script: "grep -o '\"app1_private_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
+                    
+                    // Read the app2_private_ip using grep
+                    env.APP2_HOST = sh(script: "grep -o '\"app2_private_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
                     
                     echo "BASTION_HOST: ${env.BASTION_HOST}"
                     echo "APP1_HOST: ${env.APP1_HOST}"
