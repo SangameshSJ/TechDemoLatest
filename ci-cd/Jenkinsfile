@@ -15,9 +15,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'feature-production',
-                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
-                    credentialsId: 'github-https-token'
+                checkout scm
             }
         }
 
@@ -26,22 +24,12 @@ pipeline {
                 script {
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
                     echo "Looking for file: ${jsonFile}"
-                    
-                    // Read the file content as text
                     def jsonContent = readFile(file: jsonFile)
-                    
-                    // Parse JSON using JsonSlurper (safer approach in Jenkins)
                     def jsonSlurper = new groovy.json.JsonSlurper()
                     def outputs = jsonSlurper.parseText(jsonContent)
-                    
-                    // Set environment variables
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
                     env.APP2_HOST = outputs.app2_private_ip
-                    
-                    echo "BASTION_HOST: ${env.BASTION_HOST}"
-                    echo "APP1_HOST: ${env.APP1_HOST}"
-                    echo "APP2_HOST: ${env.APP2_HOST}"
                 }
             }
         }
