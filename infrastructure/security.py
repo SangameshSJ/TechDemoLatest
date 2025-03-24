@@ -17,6 +17,9 @@ def create_security_groups(vpc_id):
     Returns:
         dict: Dictionary containing all created security group resources
     """
+    config = pulumi.Config()
+    environment = config.get("environment")
+    
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
         description="Allow SSH access to the bastion host",
@@ -33,7 +36,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "bastion-sg",
+            "Name": config.get("bastion_sg_name") or f"{environment}-bastion-sg",
         })
 
 
@@ -55,7 +58,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "app-sg",
+            "Name": config.get("app_sg_name") or f"{environment}-app-sg",
         })
 
 
@@ -83,7 +86,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "jenkins-sg",
+            "Name": config.get("jenkins_sg_name") or f"{environment}-jenkins-sg",
         })
 
 

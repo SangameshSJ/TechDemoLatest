@@ -4,4 +4,20 @@ config:
   tech-project:jenkinsInstanceType: t3.small
   tech-project:keyName: bastion-key
   tech-project:instanceType: t2.micro
+  tech-project:bastion_name: "staging-bastion"
+  tech-project:app1_name: "staging-app1"
+  tech-project:app2_name: "staging-app2"
+  tech-project:jenkins_name: "staging-jenkins"
+  tech-project:bastion_sg_name: "staging-bastion-security-group"
+  tech-project:app_sg_name: "staging-app-security-group"
+  tech-project:jenkins_sg_name: "staging-jenkins-security-group"
+  tech-project:vpc_name: "staging-network-vpc"
+  tech-project:igw_name: "staging-network-igw"
+  tech-project:public_subnet_name: "staging-public-subnet-1a"
+  tech-project:public_subnet2_name: "staging-public-subnet-1b"
+  tech-project:app1_subnet_name: "staging-app-private-1a"
+  tech-project:app2_subnet_name: "staging-app-private-1b"
+  tech-project:nat_name: "staging-nat-gw"
+  tech-project:public_rt_name: "staging-public-rt"
+  tech-project:private_rt_name: "staging-private-rt"
 encryptionsalt: v1:32CYBvON4KA=:v1:sIbZzclD+cxuiAiU:ZxwOaCQo0J/DQd5IXmI/yqtNgrcd4A==
