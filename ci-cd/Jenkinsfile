@@ -1,14 +1,8 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
-        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
-    }
-
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        STACK_NAME = "${params.ENVIRONMENT}"
         SSH_KEY = credentials("production-bastion-key")
     }
 
