@@ -25,22 +25,28 @@ pipeline {
             steps {
                 script {
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
-                    echo "Looking for file: ${jsonFile}"
+                    def jsonContent = readFile(file: jsonFile)
                     
-                    // Read the bastion_public_ip using grep
-                    env.BASTION_HOST = sh(script: "grep -o '\"bastion_public_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
-                    
-                    // Read the app1_private_ip using grep
-                    env.APP1_HOST = sh(script: "grep -o '\"app1_private_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
-                    
-                    // Read the app2_private_ip using grep
-                    env.APP2_HOST = sh(script: "grep -o '\"app2_private_ip\": *\"[^\"]*\"' ${jsonFile} | grep -o '[0-9.]\\+'", returnStdout: true).trim()
+                    // Extract values using simple string manipulation
+                    env.BASTION_HOST = extractValueFromJson(jsonContent, "bastion_public_ip")
+                    env.APP1_HOST = extractValueFromJson(jsonContent, "app1_private_ip")
+                    env.APP2_HOST = extractValueFromJson(jsonContent, "app2_private_ip")
                     
                     echo "BASTION_HOST: ${env.BASTION_HOST}"
                     echo "APP1_HOST: ${env.APP1_HOST}"
                     echo "APP2_HOST: ${env.APP2_HOST}"
                 }
             }
+        }
+
+        // Helper function to extract values from JSON string
+        def extractValueFromJson(String json, String key) {
+            def pattern = "\"${key}\"\\s*:\\s*\"([^\"]*)\"" 
+            def matcher = (json =~ pattern)
+            if (matcher.find()) {
+                return matcher.group(1)
+            }
+            return ""
         }
 
         stage('Build App 1') {
