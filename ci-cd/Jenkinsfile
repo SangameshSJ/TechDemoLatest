@@ -31,30 +31,11 @@ pipeline {
                     echo "Looking for file: ${jsonFile}"
                     
                     if (fileExists(jsonFile)) {
-                        // Print file content
                         sh "cat ${jsonFile}"
                         
-                        try {
-                            def outputs = readJSON file: jsonFile
-                            echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
-                            
-                            env.BASTION_HOST = outputs.bastion_public_ip
-                            env.APP1_HOST = outputs.app1_private_ip
-                            env.APP2_HOST = outputs.app2_private_ip
-                        } catch (Exception e) {
-                            echo "Error reading JSON: ${e.message}"
-                            
-                            // Fallback to direct approach
-                            sh "grep bastion_public_ip ${jsonFile}"
-                            sh "grep app1_private_ip ${jsonFile}"
-                            sh "grep app2_private_ip ${jsonFile}"
-                            
-                            // Fallback to hardcoded values
-                            echo "Falling back to hardcoded values"
-                            env.BASTION_HOST = "13.59.0.76"
-                            env.APP1_HOST = "10.0.2.92"
-                            env.APP2_HOST = "10.0.3.244"
-                        }
+                        env.BASTION_HOST = jsonFile.bastion_public_ip
+                        env.APP1_HOST = jsonFile.app1_private_ip
+                        env.APP2_HOST = jsonFile.app2_private_ip
                     } else {
                         error "JSON file not found: ${jsonFile}"
                     }
