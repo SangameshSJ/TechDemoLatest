@@ -23,6 +23,7 @@ pipeline {
 
         stage('Load Environment Outputs') {
             steps {
+                sh 'ls -la'
                 script {
                     def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
                     
