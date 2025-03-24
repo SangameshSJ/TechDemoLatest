@@ -1,8 +1,14 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
+        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
+    }
+
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
+        STACK_NAME = "${params.ENVIRONMENT}"
         SSH_KEY = credentials("production-bastion-key")
     }
 
@@ -18,10 +24,22 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
+                    sh 'pwd'
+                    sh 'ls -la'
                     
-                    env.BASTION_HOST = "13.59.0.76"
-                    env.APP1_HOST = "10.0.2.92"
-                    env.APP2_HOST = "10.0.3.244"
+                    def jsonFile = "${params.ENVIRONMENT}-outputs.json"
+                    echo "Looking for file: ${jsonFile}"
+                    
+                    if (fileExists(jsonFile)) {
+                        def outputs = readJSON file: jsonFile
+                        echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                        
+                        env.BASTION_HOST = outputs.bastion_public_ip
+                        env.APP1_HOST = outputs.app1_private_ip
+                        env.APP2_HOST = outputs.app2_private_ip
+                    } else {
+                        error "JSON file not found: ${jsonFile}"
+                    }
                 }
             }
         }
