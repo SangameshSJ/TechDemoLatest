@@ -18,20 +18,44 @@ pipeline {
                 git branch: 'feature-production',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
+                
+                // Debug step to see workspace contents
+                sh 'ls -la'
             }
         }
 
         stage('Load Environment Outputs') {
             steps {
-                sh 'ls -la'
                 script {
-                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
-                    
-                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
-                    
-                    env.BASTION_HOST = outputs.bastion_public_ip
-                    env.APP1_HOST = outputs.app1_private_ip
-                    env.APP2_HOST = outputs.app2_private_ip
+                    try {
+                        // Check if file exists first
+                        sh "ls -la ${params.ENVIRONMENT}-outputs.json"
+                        
+                        // Read the file content for debugging
+                        sh "cat ${params.ENVIRONMENT}-outputs.json"
+                        
+                        // Parse JSON with error handling
+                        def outputsJson = readFile(file: "${params.ENVIRONMENT}-outputs.json").trim()
+                        echo "Raw JSON content: ${outputsJson}"
+                        
+                        def outputs = readJSON text: outputsJson
+                        
+                        echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                        
+                        // Set environment variables with null checking
+                        env.BASTION_HOST = outputs.bastion_public_ip ?: ''
+                        env.APP1_HOST = outputs.app1_private_ip ?: ''
+                        env.APP2_HOST = outputs.app2_private_ip ?: ''
+                        
+                        // Verify variables are set
+                        echo "BASTION_HOST: ${env.BASTION_HOST}"
+                        echo "APP1_HOST: ${env.APP1_HOST}"
+                        echo "APP2_HOST: ${env.APP2_HOST}"
+                    } catch (Exception e) {
+                        echo "Error in Load Environment Outputs stage: ${e.message}"
+                        echo "Stack trace: ${e.stackTrace.join('\n')}"
+                        error "Failed to load environment outputs: ${e.message}"
+                    }
                 }
             }
         }
