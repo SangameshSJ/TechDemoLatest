@@ -19,42 +19,6 @@ pipeline {
             }
         }
 
-        stage('Linting') {
-            steps {
-                script {
-                    if (fileExists('applications')) {
-                        if (fileExists('applications/app1')) {
-                            dir('applications/app1') {
-                                if (fileExists('package.json')) {
-                                    sh 'npm run lint || echo "Linting failed but continuing"' 
-                                }
-                                else if (fileExists('requirements.txt')) {
-                                    sh 'pip install pylint || true'
-                                    sh 'pylint **/*.py || echo "Linting failed but continuing"'
-                                }
-                            }
-                        }
-                        
-                        
-                        if (fileExists('applications/app2')) {
-                            dir('applications/app2') {
-                                if (fileExists('package.json')) {
-                                    sh 'npm install || true'
-                                    sh 'npm run lint || echo "Linting failed but continuing"'
-                                }
-                                else if (fileExists('requirements.txt')) {
-                                    sh 'pip install pylint || true'
-                                    sh 'pylint **/*.py || echo "Linting failed but continuing"'
-                                }
-                            }
-                        }
-                    } else {
-                        echo "No applications directory found, skipping linting"
-                    }
-                }
-            }
-        }
-
         stage('Load Environment Outputs') {
             steps {
                 script {
