@@ -29,16 +29,10 @@ pipeline {
                     
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
                     echo "Looking for file: ${jsonFile}"
-                    
-                    if (fileExists(jsonFile)) {
-                        sh "cat ${jsonFile}"
-                        
-                        env.BASTION_HOST = jsonFile.bastion_public_ip
-                        env.APP1_HOST = jsonFile.app1_private_ip
-                        env.APP2_HOST = jsonFile.app2_private_ip
-                    } else {
-                        error "JSON file not found: ${jsonFile}"
-                    }
+                    sh "cat ${jsonFile}"
+                    env.BASTION_HOST = jsonFile.bastion_public_ip
+                    env.APP1_HOST = jsonFile.app1_private_ip
+                    env.APP2_HOST = jsonFile.app2_private_ip
                 }
             }
         }
