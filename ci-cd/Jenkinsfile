@@ -30,9 +30,18 @@ pipeline {
                     def jsonFile = "${params.ENVIRONMENT}-outputs.json"
                     echo "Looking for file: ${jsonFile}"
                     sh "cat ${jsonFile}"
-                    env.BASTION_HOST = jsonFile.bastion_public_ip
-                    env.APP1_HOST = jsonFile.app1_private_ip
-                    env.APP2_HOST = jsonFile.app2_private_ip
+                    
+                    // Parse the JSON file into an object
+                    def outputs = readJSON file: jsonFile
+                    
+                    // Now set environment variables from the parsed object
+                    env.BASTION_HOST = outputs.bastion_public_ip
+                    env.APP1_HOST = outputs.app1_private_ip
+                    env.APP2_HOST = outputs.app2_private_ip
+                    
+                    echo "BASTION_HOST: ${env.BASTION_HOST}"
+                    echo "APP1_HOST: ${env.APP1_HOST}"
+                    echo "APP2_HOST: ${env.APP2_HOST}"
                 }
             }
         }
