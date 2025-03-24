@@ -33,7 +33,7 @@ pipeline {
                     
                     // Parse the JSON file into an object
                     def outputs = readJSON file: jsonFile
-                    
+                    echo "output: ${outputs}"
                     // Now set environment variables from the parsed object
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
