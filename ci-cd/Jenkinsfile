@@ -1,16 +1,21 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
+        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
+    }
+
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
-        STACK_NAME = "production"
-        SSH_KEY = credentials("production-bastion-key")
+        STACK_NAME = "${params.ENVIRONMENT}"
+        SSH_KEY = credentials("bastion-key")
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'feature-production',
+                git branch: 'feature-staging',
                     url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
                     credentialsId: 'github-https-token'
             }
@@ -19,9 +24,10 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    def outputs = readJSON file: "production-outputs.json"
-                    
-                    echo "Outputs JSON for production: ${outputs}"
+                    sh 'ls -la'
+                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
+                    sh 'ls -l'
+                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
                     
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
