@@ -24,14 +24,10 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    sh 'ls -la'
-                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
-                    sh 'ls -l'
-                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
                     
-                    env.BASTION_HOST = outputs.bastion_public_ip
-                    env.APP1_HOST = outputs.app1_private_ip
-                    env.APP2_HOST = outputs.app2_private_ip
+                    env.BASTION_HOST = "13.59.0.76"
+                    env.APP1_HOST = "10.0.2.92"
+                    env.APP2_HOST = "10.0.3.244"
                 }
             }
         }
