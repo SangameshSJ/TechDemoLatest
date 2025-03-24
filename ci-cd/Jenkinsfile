@@ -24,10 +24,11 @@ pipeline {
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
-                    
-                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
-                    
+                    def jsonFile = "${params.ENVIRONMENT}-outputs.json"
+                    echo "Looking for file: ${jsonFile}"
+                    def jsonContent = readFile(file: jsonFile)
+                    def jsonSlurper = new groovy.json.JsonSlurper()
+                    def outputs = jsonSlurper.parseText(jsonContent)
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
                     env.APP2_HOST = outputs.app2_private_ip
