@@ -15,18 +15,19 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'feature-staging',
+                    url: 'https://github.com/SangameshSJ/TechDemoLatest.git',
+                    credentialsId: 'github-https-token'
             }
         }
 
         stage('Load Environment Outputs') {
             steps {
                 script {
-                    def jsonFile = "${params.ENVIRONMENT}-outputs.json"
-                    echo "Looking for file: ${jsonFile}"
-                    def jsonContent = readFile(file: jsonFile)
-                    def jsonSlurper = new groovy.json.JsonSlurper()
-                    def outputs = jsonSlurper.parseText(jsonContent)
+                    def outputs = readJSON file: "${params.ENVIRONMENT}-outputs.json"
+                    
+                    echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                    
                     env.BASTION_HOST = outputs.bastion_public_ip
                     env.APP1_HOST = outputs.app1_private_ip
                     env.APP2_HOST = outputs.app2_private_ip
