@@ -28,33 +28,32 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Check if file exists first
+                        // Check file existence
                         sh "ls -la ${params.ENVIRONMENT}-outputs.json"
                         
-                        // Read the file content for debugging
+                        // Show file content
                         sh "cat ${params.ENVIRONMENT}-outputs.json"
                         
-                        // Parse JSON with error handling
-                        def outputsJson = readFile(file: "${params.ENVIRONMENT}-outputs.json").trim()
-                        echo "Raw JSON content: ${outputsJson}"
+                        // Read file content to variable
+                        def jsonContent = readFile(file: "${params.ENVIRONMENT}-outputs.json").trim()
+                        echo "Raw JSON content: ${jsonContent}"
                         
-                        def outputs = readJSON text: outputsJson
+                        // Parse JSON with proper method
+                        def outputs = new groovy.json.JsonSlurperClassic().parseText(jsonContent)
+                        echo "Parsed JSON for ${params.ENVIRONMENT}: ${outputs}"
                         
-                        echo "Outputs JSON for ${params.ENVIRONMENT}: ${outputs}"
+                        // Set environment variables safely
+                        env.BASTION_HOST = outputs.bastion_public_ip.toString()
+                        env.APP1_HOST = outputs.app1_private_ip.toString()
+                        env.APP2_HOST = outputs.app2_private_ip.toString()
                         
-                        // Set environment variables with null checking
-                        env.BASTION_HOST = outputs.bastion_public_ip ?: ''
-                        env.APP1_HOST = outputs.app1_private_ip ?: ''
-                        env.APP2_HOST = outputs.app2_private_ip ?: ''
-                        
-                        // Verify variables are set
+                        // Verify variables
                         echo "BASTION_HOST: ${env.BASTION_HOST}"
                         echo "APP1_HOST: ${env.APP1_HOST}"
                         echo "APP2_HOST: ${env.APP2_HOST}"
                     } catch (Exception e) {
                         echo "Error in Load Environment Outputs stage: ${e.message}"
-                        echo "Stack trace: ${e.stackTrace.join('\n')}"
-                        error "Failed to load environment outputs: ${e.message}"
+                        error "Failed to process JSON: ${e.message}"
                     }
                 }
             }
