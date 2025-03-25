@@ -17,6 +17,7 @@ def create_security_groups(vpc_id):
     Returns:
         dict: Dictionary containing all created security group resources
     """
+    config = pulumi.Config()
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
         description="Allow SSH access to the bastion host",
