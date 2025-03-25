@@ -33,7 +33,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "bastion-sg",
+            "Name": config.get("bastion_sg_name") or "bastion-sg",
         })
 
 
@@ -67,7 +67,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "app-sg",
+            "Name": config.get("app_sg_name") or "app-sg",
         })
 
 
@@ -95,7 +95,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "jenkins-sg",
+            "Name": config.get("jenkins_sg_name") or "jenkins-sg",
         })
 
 

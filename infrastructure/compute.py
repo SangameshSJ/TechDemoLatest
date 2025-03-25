@@ -30,7 +30,7 @@ def create_compute_resources(network, security_groups, instance_profile):
         iam_instance_profile=instance_profile.name,
         user_data=bastion_user_data,
         tags={
-            "Name": "bastion-host",
+            "Name": config.get("bastion_name") or "bastion-host",
         })
 
 
@@ -43,7 +43,7 @@ def create_compute_resources(network, security_groups, instance_profile):
         iam_instance_profile=instance_profile.name,
         user_data=app_user_data,
         tags={
-            "Name": "app1-instance",
+            "Name": config.get("app1_name") or "app1-instance",
         })
 
 
@@ -56,7 +56,7 @@ def create_compute_resources(network, security_groups, instance_profile):
         iam_instance_profile=instance_profile.name,
         user_data=app_user_data,
         tags={
-            "Name": "app2-instance",
+            "Name": config.get("app2_name") or "app2-instance",
         })
 
 
@@ -69,7 +69,7 @@ def create_compute_resources(network, security_groups, instance_profile):
         iam_instance_profile=instance_profile.name,
         user_data=jenkins_user_data,
         tags={
-            "Name": "jenkins-instance",
+            "Name": config.get("jenkins_name") or "jenkins-instance",
         })
 
 

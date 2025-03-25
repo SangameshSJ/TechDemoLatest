@@ -24,14 +24,14 @@ def create_network_infrastructure():
         enable_dns_hostnames=True,
         enable_dns_support=True,
         tags={
-            "Name": "bastion-vpc",
+            "Name": config.get("vpc_name") or "bastion-vpc",
         })
 
 
     igw = aws.ec2.InternetGateway("bastion-igw",
         vpc_id=vpc.id,
         tags={
-            "Name": "bastion-igw",
+            "Name": config.get("igw_name") or "bastion-igw",
         })
 
 
@@ -41,7 +41,7 @@ def create_network_infrastructure():
         availability_zone=f"{region}a",
         map_public_ip_on_launch=True,
         tags={
-            "Name": "bastion-public-subnet",
+            "Name": config.get("public_subnet_name") or "bastion-public-subnet",
         })
 
 
@@ -51,7 +51,7 @@ def create_network_infrastructure():
         availability_zone=f"{region}b",
         map_public_ip_on_launch=True,
         tags={
-            "Name": "bastion-public-subnet2",
+            "Name": config.get("public_subnet2_name") or "bastion-public-subnet-2",
         })
     
     
@@ -60,7 +60,7 @@ def create_network_infrastructure():
         cidr_block="10.0.2.0/24",
         availability_zone=f"{region}a",
         tags={
-            "Name": "app1-private-subnet",
+            "Name": config.get("app1_subnet_name") or "app1-private-subnet",
         })
 
 
@@ -69,7 +69,7 @@ def create_network_infrastructure():
         cidr_block="10.0.3.0/24",
         availability_zone=f"{region}b",
         tags={
-            "Name": "app2-private-subnet",
+            "Name": config.get("app2_subnet_name") or "app2-private-subnet",
         })
 
 
@@ -81,7 +81,7 @@ def create_network_infrastructure():
         allocation_id=eip.id,
         subnet_id=public_subnet.id,
         tags={
-            "Name": "bastion-nat",
+            "Name": config.get("nat_name") or "bastion-nat",
         })
 
 
@@ -92,7 +92,7 @@ def create_network_infrastructure():
             "gateway_id": igw.id,
         }],
         tags={
-            "Name": "public-rt",
+            "Name": config.get("public_rt_name") or "public-rt",
         })
       
     private_route_table = aws.ec2.RouteTable("private-rt",
@@ -102,7 +102,7 @@ def create_network_infrastructure():
             "nat_gateway_id": nat_gateway.id,
         }],
         tags={
-            "Name": "private-rt",
+            "Name": config.get("private_rt_name") or "private-rt",
         })
 
 
