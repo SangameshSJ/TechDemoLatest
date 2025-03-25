@@ -45,7 +45,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": "alb-sg",
+            "Name": config.get("alb_sg_name") or f"{environment}-alb-sg",
         })
     
 
@@ -56,7 +56,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
         subnets=public_subnet_ids,
         enable_deletion_protection=False,
         tags={
-            "Name": "app-lb",
+            "Name": config.get("alb_name") or f"{environment}-app-lb",
         })
     
 
@@ -76,7 +76,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "interval": 30,
         },
         tags={
-            "Name": "app-tg",
+            "Name": config.get("target_group_name") or f"{environment}-app-tg",
         })
     
 

@@ -20,4 +20,7 @@ config:
   tech-project:nat_name: "staging-nat-gw"
   tech-project:public_rt_name: "staging-public-rt"
   tech-project:private_rt_name: "staging-private-rt"
+  tech-project:alb_sg_name: "staging-alb-security-group"
+  tech-project:alb_name: "staging-application-lb"
+  tech-project:target_group_name: "staging-app-target-group"
 encryptionsalt: v1:32CYBvON4KA=:v1:sIbZzclD+cxuiAiU:ZxwOaCQo0J/DQd5IXmI/yqtNgrcd4A==
