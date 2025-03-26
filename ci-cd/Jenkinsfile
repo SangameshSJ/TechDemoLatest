@@ -60,13 +60,16 @@ pipeline {
         stage('Setup SSH on Bastion') {
             steps {
                 script {
-                    def keyPath = credentials('production-bastion-key')
-                    
-                    sh """
-                        chmod 600 ${keyPath}
-                        scp -i ${keyPath} -o StrictHostKeyChecking=no ${keyPath} ec2-user@${BASTION_HOST}:/tmp/app_key
-                        ssh -i ${keyPath} -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
-                    """
+                    withCredentials([sshUserPrivateKey(
+                        credentialsId: 'production-bastion-key',
+                        keyFileVariable: 'SSH_KEY_FILE'
+                    )]) {
+                        sh """
+                            chmod 600 \$SSH_KEY_FILE
+                            scp -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no \$SSH_KEY_FILE ec2-user@${BASTION_HOST}:/tmp/app_key
+                            ssh -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
+                        """
+                    }
                 }
             }
         }
