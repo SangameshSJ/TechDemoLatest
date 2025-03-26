@@ -290,7 +290,7 @@ chmod +x /usr/local/bin/docker-compose
 
 # Create Jenkins home directory
 mkdir -p /var/jenkins_home
-chmod 777 /var/jenkins_home
+chown -R 1000:1000 /var/jenkins_home
 
 
 # Run Jenkins with Docker support and monitoring
@@ -317,6 +317,8 @@ services:
        max-file: "3"
 EOL
 
+mkdir -p /var/jenkins_home/workspace
+chown -R 1000:1000 /var/jenkins_home/workspace
 
 # Start Jenkins using Docker Compose
 cd /home/ec2-user && docker-compose up -d

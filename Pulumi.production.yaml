@@ -4,4 +4,23 @@ config:
   tech-project:keyName: production-bastion-key
   tech-project:instanceType: t2.micro
   tech-project:jenkinsInstanceType: t3.small
-encryptionsalt: v1:oXJxnlSWdmc=:v1:IVuy/d4Dl6crBNgk:g+2B6uZugscSwWbCAhCiVG09qc72AA==
+  tech-project:bastion_name: "bastion-host"
+  tech-project:app1_name: "app1-instance"
+  tech-project:app2_name: "app2-instance"
+  tech-project:jenkins_name: "jenkins-instance"
+  tech-project:bastion_sg_name: "bastion-sg"
+  tech-project:app_sg_name: "app-sg"
+  tech-project:jenkins_sg_name: "jenkins-sg"
+  tech-project:vpc_name: "bastion-vpc"
+  tech-project:igw_name: "bastion-igw"
+  tech-project:public_subnet_name: "bastion-public-subnet"
+  tech-project:public_subnet2_name: "bastion-public-subnet-2"
+  tech-project:app1_subnet_name: "app1-private-subnet"
+  tech-project:app2_subnet_name: "app2-private-subnet"
+  tech-project:nat_name: "nat-eip"
+  tech-project:public_rt_name: "public-rt"
+  tech-project:private_rt_name: "private-rt"
+  tech-project:alb_sg_name: "alb-sg"
+  tech-project:alb_name: "app-lb"
+  tech-project:target_group_name: "app-tg"
+encryptionsalt: v1:tZxE7bjMijc=:v1:GMoEBOqqgFR5Z0XU:EP/wLuhWdzOFlsTgDoR1qL6UNlSkog==
