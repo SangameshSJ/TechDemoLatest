@@ -152,53 +152,92 @@ pipeline {
             steps {
                 script {
                     try {
-                        // Verify variables exist before use
-                        if (!env.BASTION_HOST || !env.APP1_HOST || !env.APP2_HOST) {
-                            error("Missing required host variables")
-                        }
-
                         // App1 logs
-                        def app1Logs = sh(script: """
-                            echo "Collecting App1 logs..."
-                            ssh -i ${env.SSH_KEY} -o StrictHostKeyChecking=no ec2-user@${env.BASTION_HOST} << 'BASTION_EOF'
-                                ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${env.APP1_HOST} << 'APP_EOF'
-                                    echo "Collecting App1 container logs..."
-                                    sudo docker logs app1 > /tmp/app1-deployment.log 2>&1 || echo "Failed to get docker logs"
+                        def app1Logs = sh(script: '''
+                            echo "Starting App1 log collection..."
+                            
+                            ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} << 'BASTION_EOF'
+                                ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} << 'APP_EOF'
+                                    # Set AWS region explicitly
+                                    export AWS_DEFAULT_REGION=us-east-2
                                     
-                                    if command -v aws &> /dev/null; then
-                                        AWS_REGION=us-east-2
+                                    echo "1. Collecting Docker logs..."
+                                    sudo docker logs app1 > /tmp/app1-deployment.log 2>&1 || echo "Failed to capture Docker logs"
+                                    
+                                    if [ -f /tmp/app1-deployment.log ]; then
+                                        echo "2. Log file created successfully"
+                                        echo "3. File content sample:"
+                                        head -n 5 /tmp/app1-deployment.log || true
                                         
-                                        aws logs create-log-group --log-group-name app-instance-logs --region \$AWS_REGION || true
-                                        aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --region \$AWS_REGION || true
-                                        
-                                        if [ -f /tmp/app1-deployment.log ]; then
-                                            LOG_CONTENT=\$(cat /tmp/app1-deployment.log | jq -R -s -c '.')
-                                            TIMESTAMP=\$(date +%s000)
+                                        if command -v aws >/dev/null 2>&1; then
+                                            echo "4. AWS CLI is available"
                                             
-                                            LOG_EVENT="[{\\\\"timestamp\\\\": \$TIMESTAMP, \\\\"message\\\\": \$LOG_CONTENT}]"
+                                            # Create log group if not exists (with error handling)
+                                            aws logs create-log-group --log-group-name app-instance-logs --region $AWS_DEFAULT_REGION 2>&1 | grep -v "ResourceAlreadyExistsException" || true
                                             
-                                            aws logs put-log-events \\
-                                                --log-group-name app-instance-logs \\
-                                                --log-stream-name app1-deployment-logs \\
-                                                --log-events "\$LOG_EVENT" \\
-                                                --region \$AWS_REGION || echo "Failed to upload logs, but continuing"
+                                            # Create log stream if not exists
+                                            aws logs create-log-stream \
+                                                --log-group-name app-instance-logs \
+                                                --log-stream-name app1-deployment-logs \
+                                                --region $AWS_DEFAULT_REGION 2>&1 | grep -v "ResourceAlreadyExistsException" || true
+                                            
+                                            echo "5. Preparing log events..."
+                                            
+                                            # Get sequence token (required for CloudWatch Logs)
+                                            SEQUENCE_TOKEN=$(aws logs describe-log-streams \
+                                                --log-group-name app-instance-logs \
+                                                --log-stream-name-prefix app1-deployment-logs \
+                                                --query 'logStreams[].uploadSequenceToken' \
+                                                --output text \
+                                                --region $AWS_DEFAULT_REGION 2>/dev/null || echo "")
+                                                
+                                            # Format log events properly
+                                            TIMESTAMP=$(date +%s000)
+                                            LOG_EVENTS="[]"
+                                            
+                                            while IFS= read -r line; do
+                                                ESCAPED_LINE=$(echo "$line" | jq -R -s -c '.')
+                                                LOG_EVENTS=$(echo "$LOG_EVENTS" | jq --argjson ts $TIMESTAMP --arg msg "$ESCAPED_LINE" '. += [{"timestamp": $ts, "message": $msg}]')
+                                            done < /tmp/app1-deployment.log
+                                            
+                                            echo "6. Uploading logs to CloudWatch..."
+                                            
+                                            # Upload logs with or without sequence token
+                                            if [ -z "$SEQUENCE_TOKEN" ]; then
+                                                aws logs put-log-events \
+                                                    --log-group-name app-instance-logs \
+                                                    --log-stream-name app1-deployment-logs \
+                                                    --log-events "$LOG_EVENTS" \
+                                                    --region $AWS_DEFAULT_REGION && \
+                                                echo "7. Log upload successful (initial upload)" || \
+                                                echo "7. Log upload failed: $?"
+                                            else
+                                                aws logs put-log-events \
+                                                    --log-group-name app-instance-logs \
+                                                    --log-stream-name app1-deployment-logs \
+                                                    --log-events "$LOG_EVENTS" \
+                                                    --sequence-token "$SEQUENCE_TOKEN" \
+                                                    --region $AWS_DEFAULT_REGION && \
+                                                echo "7. Log upload successful (with sequence token)" || \
+                                                echo "7. Log upload failed: $?"
+                                            fi
                                         else
-                                            echo "Log file not found at /tmp/app1-deployment.log"
+                                            echo "4. AWS CLI not found, skipping CloudWatch upload"
                                         fi
                                     else
-                                        echo "AWS CLI not found, skipping log upload"
+                                        echo "2. Error: Failed to create log file"
                                     fi
         APP_EOF
         BASTION_EOF
-                            echo "App1 logs collected"
-                        """, returnStdout: true)
-
-                        // Similar implementation for App2 logs...
+                            
+                            echo "App1 log collection completed"
+                        ''', returnStdout: true)
                         
                         echo "${app1Logs}"
+                        
                     } catch (Exception e) {
-                        echo "WARNING: Failed to collect deployment logs: ${e.message}"
-                        // Continue pipeline despite log collection failure
+                        echo "WARNING: Log collection encountered an error: ${e.message}"
+                        // Continue the pipeline despite log collection issues
                     }
                 }
             }
