@@ -60,23 +60,7 @@ pipeline {
         stage('Setup SSH on Bastion') {
             steps {
                 script {
-                    withCredentials([sshUserPrivateKey(
-                        credentialsId: 'production-bastion-key',
-                        keyFileVariable: 'SSH_KEY_FILE'
-                    )]) {
-                        sh """
-                            chmod 600 \$SSH_KEY_FILE
-                            scp -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no \$SSH_KEY_FILE ec2-user@${BASTION_HOST}:/tmp/app_key
-                            ssh -i \$SSH_KEY_FILE -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Setup SSH on Bastion') {
-            steps {
-                script {
+                    // Create a temporary key file with proper permissions
                     withCredentials([sshUserPrivateKey(
                         credentialsId: 'production-bastion-key',
                         keyFileVariable: 'SSH_KEY_FILE'
@@ -98,6 +82,19 @@ pipeline {
                         '''
                     }
                 }
+            }
+        }
+
+        stage('Transfer to Bastion') {
+            steps {
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
+                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
+                    "
+                '''
             }
         }
 
