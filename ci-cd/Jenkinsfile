@@ -74,16 +74,30 @@ pipeline {
             }
         }
 
-        stage('Transfer to Bastion') {
+        stage('Setup SSH on Bastion') {
             steps {
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app1.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no app2.tar ec2-user@${BASTION_HOST}:/tmp/'
-                sh '''
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app1.tar ec2-user@${APP1_HOST}:/tmp/
-                        scp -i /tmp/app_key -o StrictHostKeyChecking=no /tmp/app2.tar ec2-user@${APP2_HOST}:/tmp/
-                    "
-                '''
+                script {
+                    withCredentials([sshUserPrivateKey(
+                        credentialsId: 'production-bastion-key',
+                        keyFileVariable: 'SSH_KEY_FILE'
+                    )]) {
+                        sh '''
+                            # Create a temporary key file in the workspace
+                            TEMP_KEY="${WORKSPACE}/bastion_key"
+                            cp "$SSH_KEY_FILE" "$TEMP_KEY"
+                            chmod 600 "$TEMP_KEY"
+                            
+                            # Copy to bastion
+                            scp -i "$TEMP_KEY" -o StrictHostKeyChecking=no "$TEMP_KEY" ec2-user@${BASTION_HOST}:/tmp/app_key
+                            
+                            # Set permissions on bastion
+                            ssh -i "$TEMP_KEY" -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
+                            
+                            # Clean up local copy
+                            rm -f "$TEMP_KEY"
+                        '''
+                    }
+                }
             }
         }
 
