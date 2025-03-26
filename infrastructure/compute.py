@@ -20,7 +20,7 @@ def create_compute_resources(network, security_groups, instance_profile):
     Returns:
         dict: Dictionary containing all created EC2 instance resources
     """
-    
+    config = pulumi.Config()
     bastion_instance = aws.ec2.Instance("bastion-host",
         ami=ami.id,
         instance_type=instance_type,

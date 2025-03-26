@@ -18,20 +18,22 @@ def create_network_infrastructure():
     Returns:
         dict: Dictionary containing all created network resources
     """
+    config = pulumi.Config()
+    environment = config.get("environment")
 
     vpc = aws.ec2.Vpc("bastion-vpc",
         cidr_block=cidr_block,
         enable_dns_hostnames=True,
         enable_dns_support=True,
         tags={
-            "Name": config.get("vpc_name") or "bastion-vpc",
+            "Name": config.get("vpc_name") or f"{environment}-vpc",
         })
 
 
     igw = aws.ec2.InternetGateway("bastion-igw",
         vpc_id=vpc.id,
         tags={
-            "Name": config.get("igw_name") or "bastion-igw",
+            "Name": config.get("igw_name") or f"{environment}-igw",
         })
 
 
@@ -41,7 +43,7 @@ def create_network_infrastructure():
         availability_zone=f"{region}a",
         map_public_ip_on_launch=True,
         tags={
-            "Name": config.get("public_subnet_name") or "bastion-public-subnet",
+            "Name": config.get("public_subnet_name") or f"{environment}-public-subnet",
         })
 
 
@@ -51,7 +53,7 @@ def create_network_infrastructure():
         availability_zone=f"{region}b",
         map_public_ip_on_launch=True,
         tags={
-            "Name": config.get("public_subnet2_name") or "bastion-public-subnet-2",
+            "Name": config.get("public_subnet2_name") or f"{environment}-public-subnet-2",
         })
     
     
@@ -60,7 +62,7 @@ def create_network_infrastructure():
         cidr_block="10.0.2.0/24",
         availability_zone=f"{region}a",
         tags={
-            "Name": config.get("app1_subnet_name") or "app1-private-subnet",
+            "Name": config.get("app1_subnet_name") or f"{environment}-app1-private-subnet",
         })
 
 
@@ -69,7 +71,7 @@ def create_network_infrastructure():
         cidr_block="10.0.3.0/24",
         availability_zone=f"{region}b",
         tags={
-            "Name": config.get("app2_subnet_name") or "app2-private-subnet",
+            "Name": config.get("app2_subnet_name") or f"{environment}-app2-private-subnet",
         })
 
 
@@ -81,7 +83,7 @@ def create_network_infrastructure():
         allocation_id=eip.id,
         subnet_id=public_subnet.id,
         tags={
-            "Name": config.get("nat_name") or "bastion-nat",
+            "Name": config.get("nat_name") or f"{environment}-nat",
         })
 
 
@@ -92,7 +94,7 @@ def create_network_infrastructure():
             "gateway_id": igw.id,
         }],
         tags={
-            "Name": config.get("public_rt_name") or "public-rt",
+            "Name": config.get("public_rt_name") or f"{environment}-public-rt",
         })
       
     private_route_table = aws.ec2.RouteTable("private-rt",
@@ -102,7 +104,7 @@ def create_network_infrastructure():
             "nat_gateway_id": nat_gateway.id,
         }],
         tags={
-            "Name": config.get("private_rt_name") or "private-rt",
+            "Name": config.get("private_rt_name") or f"{environment}-private-rt",
         })
 
 

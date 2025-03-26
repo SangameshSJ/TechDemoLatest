@@ -20,7 +20,9 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
     Returns:
         dict: Dictionary containing all created load balancer resources
     """
-
+    config = pulumi.Config()
+    environment = config.get("environment")
+    
     alb_sg = aws.ec2.SecurityGroup("alb-sg",
         vpc_id=vpc_id,
         description="Allow HTTP/HTTPS traffic to the load balancer",
@@ -45,7 +47,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": config.get("alb_sg_name") or "alb-sg",
+            "Name": config.get("alb_sg_name") or f"{environment}-alb-sg",
         })
     
 
@@ -56,7 +58,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
         subnets=public_subnet_ids,
         enable_deletion_protection=False,
         tags={
-            "Name": config.get("alb_name") or "app-lb",
+            "Name": config.get("alb_name") or f"{environment}-app-lb",
         })
     
 
@@ -76,7 +78,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
             "interval": 30,
         },
         tags={
-            "Name": config.get("target_group_name") or "app-tg",
+            "Name": config.get("target_group_name") or f"{environment}-app-tg",
         })
     
 

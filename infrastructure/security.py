@@ -18,6 +18,8 @@ def create_security_groups(vpc_id):
         dict: Dictionary containing all created security group resources
     """
     config = pulumi.Config()
+    environment = config.get("environment")
+    
     bastion_sg = aws.ec2.SecurityGroup("bastion-sg",
         vpc_id=vpc_id,
         description="Allow SSH access to the bastion host",
@@ -34,7 +36,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": config.get("bastion_sg_name") or "bastion-sg",
+            "Name": config.get("bastion_sg_name") or f"{environment}-bastion-sg",
         })
 
 
@@ -47,18 +49,6 @@ def create_security_groups(vpc_id):
                 "from_port": 22,
                 "to_port": 22,
                 "security_groups": [bastion_sg.id],
-            },
-            {
-                "protocol": "tcp",
-                "from_port": 80,
-                "to_port": 80,
-                "cidr_blocks": ["0.0.0.0/0"],
-            },
-            {
-                "protocol": "tcp",
-                "from_port": 443,
-                "to_port": 443,
-                "cidr_blocks": ["0.0.0.0/0"],
             }
         ],
         egress=[{
@@ -68,7 +58,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": config.get("app_sg_name") or "app-sg",
+            "Name": config.get("app_sg_name") or f"{environment}-app-sg",
         })
 
 
@@ -96,7 +86,7 @@ def create_security_groups(vpc_id):
             "cidr_blocks": ["0.0.0.0/0"],
         }],
         tags={
-            "Name": config.get("jenkins_sg_name") or "jenkins-sg",
+            "Name": config.get("jenkins_sg_name") or f"{environment}-jenkins-sg",
         })
 
 
