@@ -150,80 +150,87 @@ pipeline {
 
         stage('Collect Deployment Logs') {
             steps {
-                sh '''
-                    echo "Collecting deployment logs..."
-                    
-                    # Get logs from App1
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} <<'EOT'
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} <<'EOT2'
+                script {
+                    try {
+                        // App1 logs
+                        def app1Logs = sh(script: '''
                             echo "Collecting App1 logs..."
-                            sudo docker logs app1 > /tmp/app1-deployment.log 2>&1 || echo "Failed to get docker logs"
-                            
-                            # Ensure AWS CLI is available and configured
-                            if command -v aws &> /dev/null; then
-                                # Explicitly set region for all commands
-                                AWS_REGION=us-east-2
-                                
-                                # Create log group and stream if they don't exist
-                                aws logs create-log-group --log-group-name app-instance-logs --region $AWS_REGION || true
-                                aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --region $AWS_REGION || true
-                                
-                                # Only proceed if log file exists
-                                if [ -f /tmp/app1-deployment.log ]; then
-                                    # Read and format log content
-                                    LOG_CONTENT=$(cat /tmp/app1-deployment.log | jq -R -s -c '.')
-                                    TIMESTAMP=$(date +%s000)
+                            ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} /bin/bash << 'EOT'
+                                ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} /bin/bash << 'EOT2'
+                                    echo "Collecting App1 container logs..."
+                                    sudo docker logs app1 > /tmp/app1-deployment.log 2>&1 || echo "Failed to get docker logs"
                                     
-                                    # Create proper JSON for log event
-                                    LOG_EVENT="[{\"timestamp\": $TIMESTAMP, \"message\": $LOG_CONTENT}]"
-                                    
-                                    # Upload logs
-                                    aws logs put-log-events \
-                                        --log-group-name app-instance-logs \
-                                        --log-stream-name app1-deployment-logs \
-                                        --log-events "$LOG_EVENT" \
-                                        --region $AWS_REGION || echo "Failed to upload logs, but continuing"
-                                else
-                                    echo "Log file not found at /tmp/app1-deployment.log"
-                                fi
-                            else
-                                echo "AWS CLI not found, skipping log upload"
-                            fi
+                                    if command -v aws &> /dev/null; then
+                                        AWS_REGION=us-east-2
+                                        
+                                        aws logs create-log-group --log-group-name app-instance-logs --region $AWS_REGION || true
+                                        aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs --region $AWS_REGION || true
+                                        
+                                        if [ -f /tmp/app1-deployment.log ]; then
+                                            LOG_CONTENT=$(cat /tmp/app1-deployment.log | jq -R -s -c '.')
+                                            TIMESTAMP=$(date +%s000)
+                                            
+                                            LOG_EVENT="[{\\"timestamp\\": $TIMESTAMP, \\"message\\": $LOG_CONTENT}]"
+                                            
+                                            aws logs put-log-events \
+                                                --log-group-name app-instance-logs \
+                                                --log-stream-name app1-deployment-logs \
+                                                --log-events "$LOG_EVENT" \
+                                                --region $AWS_REGION || echo "Failed to upload logs, but continuing"
+                                        else
+                                            echo "Log file not found at /tmp/app1-deployment.log"
+                                        fi
+                                    else
+                                        echo "AWS CLI not found, skipping log upload"
+                                    fi
         EOT2
         EOT
+                            echo "App1 logs collected"
+                        ''', returnStdout: true)
 
-                    # Get logs from App2 (similar structure)
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} <<'EOT'
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} <<'EOT2'
+                        // App2 logs
+                        def app2Logs = sh(script: '''
                             echo "Collecting App2 logs..."
-                            sudo docker logs app2 > /tmp/app2-deployment.log 2>&1 || echo "Failed to get docker logs"
-                            
-                            if command -v aws &> /dev/null; then
-                                AWS_REGION=us-east-2
-                                
-                                aws logs create-log-group --log-group-name app-instance-logs --region $AWS_REGION || true
-                                aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --region $AWS_REGION || true
-                                
-                                if [ -f /tmp/app2-deployment.log ]; then
-                                    LOG_CONTENT=$(cat /tmp/app2-deployment.log | jq -R -s -c '.')
-                                    TIMESTAMP=$(date +%s000)
+                            ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} /bin/bash << 'EOT'
+                                ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} /bin/bash << 'EOT2'
+                                    echo "Collecting App2 container logs..."
+                                    sudo docker logs app2 > /tmp/app2-deployment.log 2>&1 || echo "Failed to get docker logs"
                                     
-                                    LOG_EVENT="[{\"timestamp\": $TIMESTAMP, \"message\": $LOG_CONTENT}]"
-                                    
-                                    aws logs put-log-events \
-                                        --log-group-name app-instance-logs \
-                                        --log-stream-name app2-deployment-logs \
-                                        --log-events "$LOG_EVENT" \
-                                        --region $AWS_REGION || echo "Failed to upload logs, but continuing"
-                                else
-                                    echo "Log file not found at /tmp/app2-deployment.log"
-                                fi
-                            else
-                                echo "AWS CLI not found, skipping log upload"
-                            fi
+                                    if command -v aws &> /dev/null; then
+                                        AWS_REGION=us-east-2
+                                        
+                                        aws logs create-log-group --log-group-name app-instance-logs --region $AWS_REGION || true
+                                        aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs --region $AWS_REGION || true
+                                        
+                                        if [ -f /tmp/app2-deployment.log ]; then
+                                            LOG_CONTENT=$(cat /tmp/app2-deployment.log | jq -R -s -c '.')
+                                            TIMESTAMP=$(date +%s000)
+                                            
+                                            LOG_EVENT="[{\\"timestamp\\": $TIMESTAMP, \\"message\\": $LOG_CONTENT}]"
+                                            
+                                            aws logs put-log-events \
+                                                --log-group-name app-instance-logs \
+                                                --log-stream-name app2-deployment-logs \
+                                                --log-events "$LOG_EVENT" \
+                                                --region $AWS_REGION || echo "Failed to upload logs, but continuing"
+                                        else
+                                            echo "Log file not found at /tmp/app2-deployment.log"
+                                        fi
+                                    else
+                                        echo "AWS CLI not found, skipping log upload"
+                                    fi
         EOT2
         EOT
-                '''
+                            echo "App2 logs collected"
+                        ''', returnStdout: true)
+
+                        echo "${app1Logs}"
+                        echo "${app2Logs}"
+                    } catch (Exception e) {
+                        echo "Failed to collect deployment logs: ${e.message}"
+                        // Continue pipeline despite log collection failure
+                    }
+                }
             }
         }
 
