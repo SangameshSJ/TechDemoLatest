@@ -151,7 +151,6 @@ pipeline {
         stage('Collect Deployment Logs') {
             steps {
                 script {
-                    // First verify all required variables exist
                     def requiredVars = ['SSH_KEY', 'BASTION_HOST', 'APP1_HOST', 'APP2_HOST']
                     def missingVars = requiredVars.findAll { !env[it] }
                     if (missingVars) {
