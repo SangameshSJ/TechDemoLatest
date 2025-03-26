@@ -60,7 +60,6 @@ pipeline {
         stage('Setup SSH on Bastion') {
             steps {
                 script {
-                    // Create a temporary key file with proper permissions
                     withCredentials([sshUserPrivateKey(
                         credentialsId: 'production-bastion-key',
                         keyFileVariable: 'SSH_KEY_FILE'
