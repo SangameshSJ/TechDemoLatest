@@ -6,7 +6,7 @@ def create_iam_resources():
     """
     Creates IAM resources with properly formatted policies for logging
     """
-    # Create EC2 instance role
+    
     instance_role = aws.iam.Role("instance-role",
         assume_role_policy=json.dumps({
             "Version": "2012-10-17",
@@ -24,12 +24,12 @@ def create_iam_resources():
             "ManagedBy": "Pulumi"
         })
 
-    # 1. Attach the standard CloudWatch Agent policy
+    
     aws.iam.RolePolicyAttachment("cloudwatch-agent-policy",
         role=instance_role.name,
         policy_arn="arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy")
 
-    # 2. Create and attach custom policy for enhanced logging (simplified version)
+    
     logging_policy = aws.iam.Policy("enhanced-logging-policy",
         description="Policy for CloudWatch logging",
         policy=json.dumps({
@@ -57,33 +57,12 @@ def create_iam_resources():
         role=instance_role.name,
         policy_arn=logging_policy.arn)
 
-    # 3. Jenkins-specific permissions
-    jenkins_policy = aws.iam.Policy("jenkins-specific-policy",
-        description="Additional permissions for Jenkins instances",
-        policy=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "ecr:GetAuthorizationToken",
-                        "ecr:BatchCheckLayerAvailability",
-                        "ecr:GetDownloadUrlForLayer",
-                        "ecr:GetRepositoryPolicy",
-                        "ecr:DescribeRepositories",
-                        "ecr:ListImages",
-                        "ecr:BatchGetImage"
-                    ],
-                    "Resource": "*"
-                }
-            ]
-        }))
-
+    
     aws.iam.RolePolicyAttachment("jenkins-policy-attachment",
         role=instance_role.name,
         policy_arn=jenkins_policy.arn)
 
-    # Create instance profile
+    
     instance_profile = aws.iam.InstanceProfile("instance-profile",
         role=instance_role.name,
         tags={
