@@ -20,6 +20,7 @@ config:
   tech-project:nat_name: "staging-nat-gw"
   tech-project:public_rt_name: "staging-public-rt"
   tech-project:private_rt_name: "staging-private-rt"
+  tech-project:domain_name: "app-lb-b813a64-311193681.us-east-1.elb.amazonaws.com"
   tech-project:alb_sg_name: "staging-alb-security-group"
   tech-project:alb_name: "staging-application-lb"
   tech-project:target_group_name: "staging-app-target-group"
