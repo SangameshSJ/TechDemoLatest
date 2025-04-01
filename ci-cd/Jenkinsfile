@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['staging', 'production'], description: 'Deployment Environment')
+        booleanParam(name: 'APPROVE_PRODUCTION', defaultValue: false, description: 'Approve Production Deployment')
+    }
+
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
@@ -54,28 +59,13 @@ pipeline {
 
         stage('Setup SSH on Bastion') {
             steps {
-                script {
-                    withCredentials([sshUserPrivateKey(
-                        credentialsId: 'production-bastion-key',
-                        keyFileVariable: 'SSH_KEY_FILE'
-                    )]) {
-                        sh '''
-                            # Create a temporary key file in the workspace
-                            TEMP_KEY="${WORKSPACE}/bastion_key"
-                            cp "$SSH_KEY_FILE" "$TEMP_KEY"
-                            chmod 600 "$TEMP_KEY"
-                            
-                            # Copy to bastion
-                            scp -i "$TEMP_KEY" -o StrictHostKeyChecking=no "$TEMP_KEY" ec2-user@${BASTION_HOST}:/tmp/app_key
-                            
-                            # Set permissions on bastion
-                            ssh -i "$TEMP_KEY" -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "chmod 600 /tmp/app_key"
-                            
-                            # Clean up local copy
-                            rm -f "$TEMP_KEY"
-                        '''
-                    }
-                }
+                sh 'chmod 600 $SSH_KEY'
+                sh 'scp -i $SSH_KEY -o StrictHostKeyChecking=no $SSH_KEY ec2-user@${BASTION_HOST}:/tmp/app_key'
+                sh '''
+                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
+                        chmod 600 /tmp/app_key
+                    "
+                '''
             }
         }
 
@@ -153,74 +143,6 @@ pipeline {
                                 exit 1
                             fi
                         '
-                    "
-                '''
-            }
-        }
-
-        stage('Collect Deployment Logs') {
-            steps {
-                sh '''
-                    echo "Collecting deployment logs..."
-                    
-                    # Get logs from App1
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP1_HOST} <<'EOT'
-                            echo \"Collecting App1 logs...\"
-                            sudo docker logs app1 > /tmp/app1-deployment.log 2>&1
-                            
-                            # Set the AWS region
-                            export AWS_DEFAULT_REGION=us-east-2
-                            
-                            # Using put-log-events
-                            if command -v aws &> /dev/null; then
-                                # Create log group and stream if they don't exist
-                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
-                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app1-deployment-logs || true
-                                
-                                # Format log data as JSON - simplified approach
-                                LOG_CONTENT=\$(cat /tmp/app1-deployment.log | tr '\n' ' ' | sed 's/\"/\\\\\\"/g')
-                                TIMESTAMP=\$(date +%s000)
-                                
-                                sudo aws logs put-log-events \\
-                                    --log-group-name app-instance-logs \\
-                                    --log-stream-name app1-deployment-logs \\
-                                    --log-events \"[{\\\"timestamp\\\":\$TIMESTAMP,\\\"message\\\":\\\"\$LOG_CONTENT\\\"}]\" \\
-                                    || echo \"Failed to upload logs, but continuing\"
-                            else
-                                echo \"AWS CLI not found, skipping log upload\"
-                            fi
-EOT
-                    "
-
-                    # Get logs from App2
-                    ssh -i $SSH_KEY -o StrictHostKeyChecking=no ec2-user@${BASTION_HOST} "
-                        ssh -i /tmp/app_key -o StrictHostKeyChecking=no ec2-user@${APP2_HOST} <<'EOT'
-                            echo \"Collecting App2 logs...\"
-                            sudo docker logs app2 > /tmp/app2-deployment.log 2>&1
-                            
-                            # Set the AWS region
-                            export AWS_DEFAULT_REGION=us-east-2
-                            
-                            # Using put-log-events instead of push
-                            if command -v aws &> /dev/null; then
-                                # Create log group and stream if they don't exist
-                                sudo aws logs create-log-group --log-group-name app-instance-logs || true
-                                sudo aws logs create-log-stream --log-group-name app-instance-logs --log-stream-name app2-deployment-logs || true
-                                
-                                # Format log data as JSON - simplified approach
-                                LOG_CONTENT=\$(cat /tmp/app2-deployment.log | tr '\n' ' ' | sed 's/\"/\\\\\\"/g')
-                                TIMESTAMP=\$(date +%s000)
-                                
-                                sudo aws logs put-log-events \\
-                                    --log-group-name app-instance-logs \\
-                                    --log-stream-name app2-deployment-logs \\
-                                    --log-events \"[{\\\"timestamp\\\":\$TIMESTAMP,\\\"message\\\":\\\"\$LOG_CONTENT\\\"}]\" \\
-                                    || echo \"Failed to upload logs, but continuing\"
-                            else
-                                echo \"AWS CLI not found, skipping log upload\"
-                            fi
-EOT
                     "
                 '''
             }
