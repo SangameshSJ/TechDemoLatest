@@ -23,4 +23,6 @@ config:
   tech-project:alb_sg_name: "alb-sg"
   tech-project:alb_name: "app-lb"
   tech-project:target_group_name: "app-tg"
+  tech-project:domain_name: "app-lb-0100a47-551643465.us-east-2.elb.amazonaws.com"
+  tech-project:hosted_zone_id: "Z0557813119GV8OLCFU8A"
 encryptionsalt: v1:tZxE7bjMijc=:v1:GMoEBOqqgFR5Z0XU:EP/wLuhWdzOFlsTgDoR1qL6UNlSkog==
