@@ -1,5 +1,5 @@
 config:
-  aws:region: us-east-1
+  aws:region: us-east-2
   tech-project:environment: staging
   tech-project:jenkinsInstanceType: t3.small
   tech-project:keyName: bastion-key

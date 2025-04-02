@@ -20,7 +20,7 @@ def create_load_balancer(vpc_id, public_subnet_ids, app_instance_ids, security_g
     Returns:
         dict: Dictionary containing all created load balancer resources
     """
-
+    config = pulumi.Config()
     alb_sg = aws.ec2.SecurityGroup("alb-sg",
         vpc_id=vpc_id,
         description="Allow HTTP/HTTPS traffic to the load balancer",
