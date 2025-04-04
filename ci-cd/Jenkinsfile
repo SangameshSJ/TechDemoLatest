@@ -1,6 +1,6 @@
 pipeline {
     agent any
-
+    
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
