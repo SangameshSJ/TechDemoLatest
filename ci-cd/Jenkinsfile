@@ -1,13 +1,12 @@
 pipeline {
     agent any
-    
+
     environment {
         AWS_CREDENTIALS = credentials('aws-credentials')
         STACK_NAME = "${params.ENVIRONMENT}"
         SSH_KEY = credentials("bastion-key")
     }
 
-// new
 
     stages {
         stage('Checkout') {
